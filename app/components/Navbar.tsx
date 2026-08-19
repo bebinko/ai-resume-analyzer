@@ -35,7 +35,7 @@ const Navbar = () => {
   return (
     <nav className="navbar">
       <Link to="/">
-        <p className="text-2xl font-bold text-gradient">Resumind</p>
+        <p className="text-2xl font-bold ">Breezume</p>
       </Link>
 
       <div className="flex items-center gap-3">

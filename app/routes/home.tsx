@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Resumind" },
-    { name: "description", content: "Smart feedback for your dream job!" },
+    { title: "Breezume" },
+    { name: "description", content: "Resumes done in a breeze!" },
   ];
 }
 
@@ -40,7 +40,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="bg-[url('/images/bg-main.svg')] bg-cover">
+    <main className="bg-[url('/images/bg-main.png')] bg-cover">
       <Navbar />
 
       <section className="main-section">

@@ -5,7 +5,7 @@ import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
 
 export const meta = () => [
-  { title: "Resumind | AI Revisions" },
+  { title: "Breezume | AI Revisions" },
   { name: "description", content: "Apply AI-powered revisions to your resume" },
 ];
 
@@ -435,7 +435,7 @@ const Revise = () => {
   const isDone = currentStep === 4 && !error;
 
   return (
-    <main className="bg-[url('/images/bg-main.svg')] bg-cover min-h-screen">
+    <main className="bg-[url('/images/bg-main.png')] bg-cover min-h-screen">
       <Navbar />
       <section className="main-section">
         {/* Page heading */}

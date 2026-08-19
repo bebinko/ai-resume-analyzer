@@ -28,7 +28,7 @@ main {
   @apply min-h-screen pt-10;
 }
 h1 {
-  @apply max-sm:text-[3rem] text-6xl  text-gradient leading-tight xl:tracking-[-2px] font-semibold;
+  @apply max-sm:text-[3rem] text-6xl leading-tight xl:tracking-[-2px] font-semibold;
 }
 
 h2 {
@@ -59,6 +59,10 @@ form {
   }
   .primary-button {
     @apply primary-gradient text-white rounded-full px-4 py-2 cursor-pointer w-full;
+  }
+  .primary-button:hover {
+    background: linear-gradient(to bottom, #6d77e6, #4750c7);
+    box-shadow: 0px 74px 21px 0px #6678ef00;
   }
   .resume-nav {
     @apply flex flex-row justify-between items-center p-4 border-b border-gray-200;
@@ -98,7 +102,15 @@ form {
   }
 
   .navbar {
-    @apply flex flex-row justify-between items-center bg-white rounded-full p-4 w-full px-10 max-w-[1200px] mx-auto;
+    @apply sticky top-5 z-50 flex flex-row justify-between items-center rounded-full p-4 w-full px-10 max-w-[1200px] mx-auto;
+    background: linear-gradient(
+      to right,
+      rgba(142, 152, 255, 0.2),
+      rgba(250, 113, 133, 0.12)
+    );
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(142, 152, 255, 0.3);
+    box-shadow: 0 10px 40px rgba(96, 107, 235, 0.2);
   }
 
   .score-badge {
@@ -141,6 +153,10 @@ form {
 @utility inset-shadow {
   box-shadow: inset 0 0 12px 0 rgba(36, 99, 235, 0.2);
   backdrop-filter: blur(10px);
+}
+@utility logo-glow {
+  color: #606beb;
+  text-shadow: 0 0 20px rgba(96, 107, 235, 0.35);
 }
 
 @keyframes fadeIn {
