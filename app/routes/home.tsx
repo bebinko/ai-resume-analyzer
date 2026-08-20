@@ -44,8 +44,9 @@ export default function Home() {
       <Navbar />
 
       <section className="main-section">
-        <div className="page-heading py-16">
+        <div className="page-heading py-16 relative">
           <h1>Track Your Applications & Resume Ratings</h1>
+          <div className="hero-underline" />
           {!loadingResumes && resumes?.length === 0 ? (
             <h2>No resumes found. Upload your first resume to get feedback.</h2>
           ) : (
@@ -53,7 +54,8 @@ export default function Home() {
           )}
         </div>
         {loadingResumes && (
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center relative py-10">
+            <div className="glow-blob w-[300px] h-[300px] -z-10" />
             <img src="/images/resume-scan-2.gif" className="w-[200px]" />
           </div>
         )}
@@ -68,6 +70,7 @@ export default function Home() {
 
         {!loadingResumes && resumes?.length === 0 && (
           <div className="flex flex-col items-center justify-center mt-10 gap-4">
+            <div className="glow-blob w-[350px] h-[350px] -z-10" />
             <Link
               to="/upload"
               className="primary-button w-fit text-xl font-semibold"

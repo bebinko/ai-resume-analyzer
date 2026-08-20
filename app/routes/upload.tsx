@@ -7,15 +7,28 @@ import { usePuterStore } from "~/lib/puter";
 import { generateUUID } from "~/lib/utils";
 import { prepareInstructions } from "../../constants";
 
+// Character limits — keeps prompt size (and token cost) predictable
+const LIMITS = {
+  companyName: 100,
+  jobTitle: 100,
+  jobDescription: 2000,
+};
+
 const Upload = () => {
   const { auth, isLoading, fs, ai, kv } = usePuterStore();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+
+  const [companyName, setCompanyName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
+
   const handleFileSelect = (file: File | null) => {
     setFile(file);
   };
+
   const handleAnalyze = async ({
     companyName,
     jobTitle,
@@ -71,22 +84,22 @@ const Upload = () => {
     data.feedback = JSON.parse(feedbackText);
     await kv.set(`resume:${uuid}`, JSON.stringify(data));
     setStatusText("Analysis complete, redirecting...");
-    console.log(data);
     navigate(`/resume/${uuid}`);
   };
+
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = e.currentTarget.closest("form");
-    if (!form) return;
-    const formData = new FormData(form);
-    const companyName = formData.get("company-name") as string;
-    const jobTitle = formData.get("job-title") as string;
-    const jobDescription = formData.get("job-description") as string;
     if (!file) return;
-    handleAnalyze({ companyName, jobTitle, jobDescription, file });
+    handleAnalyze({
+      companyName: companyName.slice(0, LIMITS.companyName),
+      jobTitle: jobTitle.slice(0, LIMITS.jobTitle),
+      jobDescription: jobDescription.slice(0, LIMITS.jobDescription),
+      file,
+    });
   };
+
   return (
-    <main className="bg-[url('/images/bg-main.png')] bg-cover">
+    <main className="bg-white">
       <Navbar />
       <section className="main-section">
         <div className="page-heading py-16">
@@ -106,30 +119,54 @@ const Upload = () => {
               className="flex flex-col gap-4 mt-8"
             >
               <div className="form-div">
-                <label htmlFor="company-name">Company Name</label>
+                <div className="flex flex-row justify-between w-full">
+                  <label htmlFor="company-name">Company Name</label>
+                  <span className="text-xs text-gray-400">
+                    {companyName.length}/{LIMITS.companyName}
+                  </span>
+                </div>
                 <input
                   type="text"
                   name="company-name"
                   placeholder="Company Name"
                   id="company-name"
+                  maxLength={LIMITS.companyName}
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
                 />
               </div>
               <div className="form-div">
-                <label htmlFor="job-title">Job Title</label>
+                <div className="flex flex-row justify-between w-full">
+                  <label htmlFor="job-title">Job Title</label>
+                  <span className="text-xs text-gray-400">
+                    {jobTitle.length}/{LIMITS.jobTitle}
+                  </span>
+                </div>
                 <input
                   type="text"
                   name="job-title"
                   placeholder="Job Title"
                   id="job-title"
+                  maxLength={LIMITS.jobTitle}
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
                 />
               </div>
               <div className="form-div">
-                <label htmlFor="job-description">Job Description</label>
+                <div className="flex flex-row justify-between w-full">
+                  <label htmlFor="job-description">Job Description</label>
+                  <span className="text-xs text-gray-400">
+                    {jobDescription.length}/{LIMITS.jobDescription}
+                  </span>
+                </div>
                 <textarea
                   rows={5}
                   name="job-description"
                   placeholder="Job Description"
                   id="job-description"
+                  maxLength={LIMITS.jobDescription}
+                  value={jobDescription}
+                  onChange={(e) => setJobDescription(e.target.value)}
                 />
               </div>
               <div className="form-div">

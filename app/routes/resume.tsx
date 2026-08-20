@@ -53,19 +53,6 @@ const Resume = () => {
         </Link>
       </nav>
       <div className="flex flex-row w-full max-lg:flex-col-reverse">
-        <section className="feedback-section bg-[url('/images/bg-small.png')] bg-cover h-[100vh] sticky top-0 items-center justify-center">
-          {imageUrl && resumeUrl && (
-            <div className="animate-in fade-in duration-1000 gradient-border max-sm:m-0 h-[90%] max-wxl:h-fit w-fit">
-              <a href={resumeUrl} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={imageUrl}
-                  className="w-full h-full object-contain rounded-2xl"
-                  title="resume"
-                />
-              </a>
-            </div>
-          )}
-        </section>
         <section className="feedback-section">
           <h2 className="text-4xl text-black font-bold">Resume Review</h2>
           {feedback ? (
@@ -80,7 +67,6 @@ const Resume = () => {
               {/* ── AI Revision CTA ───────────────────────────────────────── */}
               <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 shadow-md p-6 flex flex-col gap-4">
                 <div className="flex flex-row gap-3 items-center">
-                  {/* Sparkle icon — inline SVG so no extra asset needed */}
                   <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
                     <svg
                       className="w-5 h-5 text-white"
@@ -135,6 +121,19 @@ const Resume = () => {
             </div>
           ) : (
             <img src="/images/resume-scan-2.gif" className="w-full" />
+          )}
+        </section>
+        <section className="feedback-section bg-[url('/images/bg-small.png')] bg-cover h-[100vh] sticky top-0 items-center justify-center">
+          {imageUrl && resumeUrl && (
+            <div className="animate-in fade-in duration-1000 gradient-border max-sm:m-0 h-[90%] max-wxl:h-fit w-fit">
+              <a href={resumeUrl} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={imageUrl}
+                  className="w-full h-full object-contain rounded-2xl"
+                  title="resume"
+                />
+              </a>
+            </div>
           )}
         </section>
       </div>

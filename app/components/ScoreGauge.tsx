@@ -1,16 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 
-const ScoreGauge = ({ score = 75 }: { score: number }) => {
-  const [pathLength, setPathLength] = useState(0);
-  const pathRef = useRef<SVGPathElement>(null);
+const SENTINEL_LENGTH = 1000; // bigger than the real arc length, guarantees "hidden" before measurement
 
-  const percentage = score / 100;
+const ScoreGauge = ({ score = 75 }: { score: number }) => {
+  const [pathLength, setPathLength] = useState(SENTINEL_LENGTH);
+  const [animatedScore, setAnimatedScore] = useState(0);
+  const pathRef = useRef<SVGPathElement>(null);
+  const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (pathRef.current) {
-      setPathLength(pathRef.current.getTotalLength());
-    }
-  }, []);
+    const path = pathRef.current;
+    if (!path) return;
+
+    const length = path.getTotalLength();
+    setPathLength(length);
+    setAnimatedScore(0); // always reset to empty/left before animating
+
+    const duration = 1200;
+    let startTime: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (startTime === null) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+
+      setAnimatedScore(Math.round(eased * score));
+
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    };
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [score]);
+
+  const percentage = animatedScore / 100;
+  const dashOffset = pathLength - pathLength * percentage;
 
   return (
     <div className="flex flex-col items-center">
@@ -29,7 +56,6 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
             </linearGradient>
           </defs>
 
-          {/* Background arc */}
           <path
             d="M10,50 A40,40 0 0,1 90,50"
             fill="none"
@@ -38,7 +64,6 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
             strokeLinecap="round"
           />
 
-          {/* Foreground arc with rounded ends */}
           <path
             ref={pathRef}
             d="M10,50 A40,40 0 0,1 90,50"
@@ -47,12 +72,12 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
             strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={pathLength}
-            strokeDashoffset={pathLength * (1 - percentage)}
+            strokeDashoffset={dashOffset}
           />
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-          <div className="text-xl font-semibold pt-4">{score}/100</div>
+          <div className="text-xl font-semibold pt-4">{animatedScore}/100</div>
         </div>
       </div>
     </div>

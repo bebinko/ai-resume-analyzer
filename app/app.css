@@ -68,7 +68,7 @@ form {
     @apply flex flex-row justify-between items-center p-4 border-b border-gray-200;
   }
   .resume-summary {
-    @apply flex flex-row items-center justify-center p-4 gap-4;
+    @apply flex flex-row items-center justify-center p-2 gap-4;
     .category {
       @apply flex flex-row gap-2 items-center bg-gray-50 rounded-2xl p-4 w-full justify-between;
     }
@@ -90,7 +90,21 @@ form {
   }
 
   .resume-card {
-    @apply flex flex-col gap-8 h-[560px] w-[350px] lg:w-[430px] xl:w-[490px] bg-white rounded-2xl p-4;
+    @apply flex flex-col gap-8 h-[560px] w-[350px] lg:w-[430px] xl:w-[490px] bg-white rounded-2xl p-4 relative overflow-hidden;
+    border: 1px solid rgba(142, 152, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(96, 107, 235, 0.06);
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+
+  .resume-card:hover {
+    transform: scale(1.015);
+    box-shadow: 0 20px 40px rgba(96, 107, 235, 0.15);
+  }
+
+  .resume-card-accent {
+    @apply absolute top-0 left-0 w-full h-[4px];
   }
 
   .resume-card-header {
@@ -121,11 +135,24 @@ form {
     @apply flex flex-col gap-2 w-full items-start;
   }
 
-  .uplader-drag-area {
+  .uploader-drag-area {
     @apply relative p-8 text-center transition-all duration-700 cursor-pointer bg-white rounded-2xl min-h-[208px];
   }
   .uploader-selected-file {
     @apply flex items-center justify-between p-3 bg-gray-50 rounded-2xl;
+  }
+
+  .uploader-drag-area {
+    border: 1.5px dashed rgba(142, 152, 255, 0.35);
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .uploader-drag-area:hover,
+  .uploader-drag-area.drag-active {
+    border-color: rgba(96, 107, 235, 0.6);
+    background-color: rgba(142, 152, 255, 0.05);
   }
 }
 
@@ -157,6 +184,23 @@ form {
 @utility logo-glow {
   color: #606beb;
   text-shadow: 0 0 20px rgba(96, 107, 235, 0.35);
+}
+
+@utility hero-underline {
+  @apply h-1 rounded-full mx-auto;
+  width: 90px;
+  background: linear-gradient(to right, #8e98ff, #ff97ad);
+}
+
+@utility glow-blob {
+  @apply absolute rounded-full pointer-events-none;
+  background: radial-gradient(
+    circle,
+    rgba(142, 152, 255, 0.35),
+    rgba(255, 151, 173, 0.15) 60%,
+    transparent 80%
+  );
+  filter: blur(60px);
 }
 
 @keyframes fadeIn {

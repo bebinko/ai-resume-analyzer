@@ -3,6 +3,12 @@ import ScoreCircle from "./ScoreCircle";
 import { useEffect, useState } from "react";
 import { usePuterStore } from "~/lib/puter";
 
+const scoreAccentColor = (score: number) => {
+  if (score > 69) return "linear-gradient(to right, #34d399, #10b981)"; // green
+  if (score > 39) return "linear-gradient(to right, #fbbf24, #f59e0b)"; // yellow
+  return "linear-gradient(to right, #f87171, #ef4444)"; // red
+};
+
 const ResumeCard = ({
   resume: { id, companyName, jobTitle, feedback, imagePath },
 }: {
@@ -10,20 +16,33 @@ const ResumeCard = ({
 }) => {
   const { fs } = usePuterStore();
   const [resumeUrl, setResumeUrl] = useState("");
+
   useEffect(() => {
+    let objectUrl: string | null = null;
+
     const loadResume = async () => {
       const blob = await fs.read(imagePath);
       if (!blob) return;
-      let url = URL.createObjectURL(blob);
-      setResumeUrl(url);
+      objectUrl = URL.createObjectURL(blob);
+      setResumeUrl(objectUrl);
     };
     loadResume();
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
   }, [imagePath]);
+
   return (
     <Link
       to={`/resume/${id}`}
       className="resume-card animate-in fade-in duration-1000"
     >
+      <div
+        className="resume-card-accent"
+        style={{ background: scoreAccentColor(feedback.overallScore) }}
+      />
+
       <div className="resume-card-header">
         <div className="flex flex-col gap-2">
           {companyName && (
