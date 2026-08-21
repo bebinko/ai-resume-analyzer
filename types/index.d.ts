@@ -12,6 +12,8 @@ interface Resume {
   imagePath: string;
   resumePath: string;
   feedback: Feedback;
+  isRevision?: boolean;
+  originalResumeId?: string;
 }
 
 interface Feedback {

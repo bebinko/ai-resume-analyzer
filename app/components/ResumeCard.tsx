@@ -10,7 +10,7 @@ const scoreAccentColor = (score: number) => {
 };
 
 const ResumeCard = ({
-  resume: { id, companyName, jobTitle, feedback, imagePath },
+  resume: { id, companyName, jobTitle, feedback, imagePath, isRevision },
 }: {
   resume: Resume;
 }) => {
@@ -45,6 +45,11 @@ const ResumeCard = ({
 
       <div className="resume-card-header">
         <div className="flex flex-col gap-2">
+          {isRevision && (
+            <span className="w-fit text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+              ✨ AI Revised
+            </span>
+          )}
           {companyName && (
             <h2 className="!text-black font-bold break-words">{companyName}</h2>
           )}

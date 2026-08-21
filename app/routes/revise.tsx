@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import Navbar from "~/components/Navbar";
 import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
+import { generateUUID } from "~/lib/utils";
 
 export const meta = () => [
   { title: "Breezume | AI Revisions" },
@@ -13,15 +14,15 @@ export const meta = () => [
 
 interface ResumedSection {
   heading: string;
-  content: string; // plain text, may contain \n for line breaks
+  content: string;
 }
 
 interface RevisedResume {
   name: string;
-  contactLine: string; // e.g. "email@x.com | linkedin.com/in/x | 555-1234"
+  contactLine: string;
   summary?: string;
   sections: ResumedSection[];
-  changeLog: string[]; // human-readable list of changes made
+  changeLog: string[];
 }
 
 // ─── AI prompt ────────────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ INSTRUCTIONS:
 }
 `;
 
-// ─── PDF builder (pdfmake) ─────────────────────────────────────────────────────
+// ─── PDF builder (pdf-lib) ─────────────────────────────────────────────────────
 
 async function buildPdf(revised: RevisedResume): Promise<Blob> {
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
@@ -92,14 +93,12 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  // ── Page setup ──────────────────────────────────────────────────────────────
   const PAGE_W = 612;
   const PAGE_H = 792;
   const MARGIN = 50;
   const LINE_H = 14;
   const COL_W = PAGE_W - MARGIN * 2;
 
-  // Colors
   const cDark = rgb(0.1, 0.1, 0.17);
   const cMuted = rgb(0.33, 0.33, 0.33);
   const cDivider = rgb(0.82, 0.84, 0.86);
@@ -107,8 +106,6 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
 
   let page = doc.addPage([PAGE_W, PAGE_H]);
   let y = PAGE_H - MARGIN;
-
-  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   const newPage = () => {
     page = doc.addPage([PAGE_W, PAGE_H]);
@@ -119,7 +116,6 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
     if (y - needed < MARGIN) newPage();
   };
 
-  // Word-wrap a string into lines that fit within maxWidth at fontSize
   const wrapText = (
     text: string,
     font: typeof fontRegular,
@@ -179,12 +175,10 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
     y -= gap;
   };
 
-  // ── Name & contact ──────────────────────────────────────────────────────────
   drawText(revised.name, { font: fontBold, size: 20, color: cDark, gap: 5 });
   drawText(revised.contactLine, { size: 9, color: cMuted, gap: 4 });
   drawDivider(10);
 
-  // ── Summary ─────────────────────────────────────────────────────────────────
   if (revised.summary) {
     drawText("PROFESSIONAL SUMMARY", {
       font: fontBold,
@@ -196,7 +190,6 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
     drawDivider(8);
   }
 
-  // ── Sections ────────────────────────────────────────────────────────────────
   for (const section of revised.sections) {
     drawText(section.heading.toUpperCase(), {
       font: fontBold,
@@ -214,7 +207,6 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
       }
 
       if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
-        // Bullet
         checkY(LINE_H);
         page.drawText("•", {
           x: MARGIN + 8,
@@ -237,7 +229,6 @@ async function buildPdf(revised: RevisedResume): Promise<Blob> {
           y -= LINE_H;
         }
       } else {
-        // Entry header (Company — Role | Date) — bold
         const isSectionHead = /[|—–]/.test(trimmed);
         drawText(trimmed, {
           font: isSectionHead ? fontBold : fontRegular,
@@ -263,6 +254,7 @@ const steps = [
   { id: "revising", label: "Claude is rewriting your resume" },
   { id: "building", label: "Building revised PDF" },
   { id: "rendering", label: "Rendering preview" },
+  { id: "storing", label: "Saving to your dashboard" },
   { id: "done", label: "Done!" },
 ];
 
@@ -276,11 +268,11 @@ const Revise = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Results
   const [revisedData, setRevisedData] = useState<RevisedResume | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [changeLog, setChangeLog] = useState<string[]>([]);
+  const [revisedResumeId, setRevisedResumeId] = useState<string | null>(null);
 
   const hasFetched = useRef(false);
 
@@ -322,7 +314,6 @@ const Revise = () => {
         data.jobDescription,
       );
 
-      // Race the AI call against a 60-second timeout so we never hang forever
       const AI_TIMEOUT_MS = 60_000;
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
@@ -415,7 +406,41 @@ const Revise = () => {
         setPreviewUrl(url);
       }
 
+      // ── Step 4: Store the revised resume so it shows on the home page ─────
       setCurrentStep(4);
+      try {
+        const uploadedRevisedResume = await fs.upload([pdfFile]);
+        if (!uploadedRevisedResume)
+          throw new Error("Failed to upload revised resume PDF.");
+
+        let uploadedRevisedImagePath: string | null = null;
+        if (imgResult.file) {
+          const uploadedRevisedImage = await fs.upload([imgResult.file]);
+          if (uploadedRevisedImage)
+            uploadedRevisedImagePath = uploadedRevisedImage.path;
+        }
+
+        const newId = generateUUID();
+        const revisedRecord: Resume = {
+          id: newId,
+          companyName: data.companyName,
+          jobTitle: data.jobTitle,
+          imagePath: uploadedRevisedImagePath ?? data.imagePath,
+          resumePath: uploadedRevisedResume.path,
+          feedback: data.feedback,
+          isRevision: true,
+          originalResumeId: id,
+        };
+
+        await kv.set(`resume:${newId}`, JSON.stringify(revisedRecord));
+        setRevisedResumeId(newId);
+      } catch (storeErr) {
+        // Don't fail the whole flow if storage fails — the user can still
+        // preview/download the revision, they just won't see it saved.
+        console.error("Failed to store revised resume:", storeErr);
+      }
+
+      setCurrentStep(5);
     } catch (err: any) {
       console.error(err);
       setError(err?.message || "Something went wrong. Please try again.");
@@ -432,13 +457,12 @@ const Revise = () => {
     URL.revokeObjectURL(url);
   };
 
-  const isDone = currentStep === 4 && !error;
+  const isDone = currentStep === 5 && !error;
 
   return (
-    <main className="bg-[url('/images/bg-main.png')] bg-cover min-h-screen">
+    <main className="bg-white min-h-screen">
       <Navbar />
       <section className="main-section">
-        {/* Page heading */}
         <div className="page-heading py-10">
           <Link to={`/resume/${id}`} className="back-button mb-4 inline-flex">
             <img src="/icons/back.svg" alt="back" className="w-2.5 h-2.5" />
@@ -452,7 +476,6 @@ const Revise = () => {
           </h2>
         </div>
 
-        {/* Error state */}
         {error && (
           <div className="rounded-2xl bg-red-50 border border-red-200 p-6 flex flex-col gap-4 max-w-xl mx-auto">
             <div className="flex items-start gap-3">
@@ -499,7 +522,6 @@ const Revise = () => {
           </div>
         )}
 
-        {/* Progress steps */}
         {!error && !isDone && (
           <div className="flex flex-col items-center gap-8 py-10">
             <img
@@ -538,10 +560,8 @@ const Revise = () => {
           </div>
         )}
 
-        {/* Done: show preview + changes */}
         {isDone && (
           <div className="flex flex-col gap-8 pb-16 animate-in fade-in duration-700">
-            {/* Actions bar */}
             <div className="flex flex-row flex-wrap gap-4 items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
@@ -550,12 +570,21 @@ const Revise = () => {
                 <p className="text-gray-500 text-sm mt-1">
                   Claude applied {changeLog.length} improvement
                   {changeLog.length !== 1 ? "s" : ""} to your resume.
+                  {revisedResumeId && " Saved to your dashboard."}
                 </p>
               </div>
               <div className="flex gap-3">
                 <Link to={`/resume/${id}`} className="back-button">
                   ← Back to Review
                 </Link>
+                {revisedResumeId && (
+                  <Link
+                    to={`/resume/${revisedResumeId}`}
+                    className="back-button"
+                  >
+                    View Saved Revision
+                  </Link>
+                )}
                 <button
                   onClick={handleDownload}
                   className="primary-button w-fit flex items-center gap-2"
@@ -567,7 +596,6 @@ const Revise = () => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
-              {/* Preview */}
               <div className="flex-1 min-w-0">
                 {previewUrl ? (
                   <div className="gradient-border animate-in fade-in duration-1000">
@@ -584,7 +612,6 @@ const Revise = () => {
                 )}
               </div>
 
-              {/* Change log */}
               <div className="lg:w-80 flex-shrink-0 flex flex-col gap-4">
                 <div className="rounded-2xl shadow-md bg-white p-6 flex flex-col gap-4">
                   <h3 className="text-xl font-bold text-gray-900">
@@ -608,7 +635,6 @@ const Revise = () => {
                   </ul>
                 </div>
 
-                {/* Download again (sticky-ish for convenience) */}
                 <button
                   onClick={handleDownload}
                   className="primary-button w-full flex items-center justify-center gap-2"
