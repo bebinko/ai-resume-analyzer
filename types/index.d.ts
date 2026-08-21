@@ -55,4 +55,5 @@ interface Feedback {
       explanation: string;
     }[];
   };
+  suggestedJobTitles?: string[];
 }
