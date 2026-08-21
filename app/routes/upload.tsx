@@ -7,6 +7,14 @@ import { usePuterStore } from "~/lib/puter";
 import { generateUUID } from "~/lib/utils";
 import { prepareInstructions } from "../../constants";
 
+export const meta = () => [
+  { title: "Breezume | Upload" },
+  {
+    name: "description",
+    content: "Upload your resume for AI-powered feedback",
+  },
+];
+
 // Character limits — keeps prompt size (and token cost) predictable
 const LIMITS = {
   companyName: 100,

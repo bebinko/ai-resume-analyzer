@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const SENTINEL_LENGTH = 1000; // bigger than the real arc length, guarantees "hidden" before measurement
+const SENTINEL_LENGTH = 1000;
 
 const ScoreGauge = ({ score = 75 }: { score: number }) => {
   const [pathLength, setPathLength] = useState(SENTINEL_LENGTH);
@@ -14,7 +14,7 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
 
     const length = path.getTotalLength();
     setPathLength(length);
-    setAnimatedScore(0); // always reset to empty/left before animating
+    setAnimatedScore(0);
 
     const duration = 1200;
     let startTime: number | null = null;
@@ -23,7 +23,7 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
       if (startTime === null) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const t = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
 
       setAnimatedScore(Math.round(eased * score));
 
@@ -51,8 +51,13 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
               x2="100%"
               y2="0%"
             >
+              <stop offset="0%" stopColor="#ef4444" />
+              <stop offset="50%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#10b981" />
+              {/*
               <stop offset="0%" stopColor="#a78bfa" />
               <stop offset="100%" stopColor="#fca5a5" />
+               */}
             </linearGradient>
           </defs>
 
