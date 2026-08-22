@@ -5,18 +5,23 @@ import { usePuterStore } from "~/lib/puter";
 
 export const meta = () => [
   { title: "Breezume | Settings" },
-  { name: "description", content: "Manage your account and data" },
+  { name: "description", content: "Manage your account and resume data" },
 ];
 
 const Settings = () => {
   const { auth, isLoading, fs, kv } = usePuterStore();
   const navigate = useNavigate();
 
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [loadingResumes, setLoadingResumes] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
-  const [isWiping, setIsWiping] = useState(false);
-  const [wipeComplete, setWipeComplete] = useState(false);
-  const [wipeError, setWipeError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSuccessCount, setDeleteSuccessCount] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!isLoading && !auth.isAuthenticated) {
@@ -24,24 +29,68 @@ const Settings = () => {
     }
   }, [isLoading]);
 
-  const handleWipeData = async () => {
-    setIsWiping(true);
-    setWipeError(null);
+  const loadResumes = async () => {
+    setLoadingResumes(true);
+    const raw = (await kv.list("resume:*", true)) as KVItem[];
+    const parsed = raw?.map((r) => JSON.parse(r.value) as Resume) || [];
+    setResumes(parsed);
+    setLoadingResumes(false);
+  };
+
+  useEffect(() => {
+    loadResumes();
+  }, []);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allSelected = resumes.length > 0 && selectedIds.size === resumes.length;
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(resumes.map((r) => r.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
     try {
-      const files = (await fs.readDir("./")) ?? [];
-      for (const file of files) {
-        await fs.delete(file.path);
+      const toDelete = resumes.filter((r) => selectedIds.has(r.id));
+
+      for (const resume of toDelete) {
+        try {
+          await fs.delete(resume.resumePath);
+        } catch {
+          // file may already be gone — don't block the rest of the cleanup
+        }
+        try {
+          await fs.delete(resume.imagePath);
+        } catch {
+          // same as above
+        }
+        await kv.delete(`resume:${resume.id}`);
       }
-      await kv.flush();
-      setWipeComplete(true);
+
+      setDeleteSuccessCount(toDelete.length);
+      setSelectedIds(new Set());
       setShowConfirm(false);
       setConfirmText("");
+      await loadResumes();
     } catch (err: any) {
-      setWipeError(
-        err?.message || "Something went wrong while wiping your data.",
+      setDeleteError(
+        err?.message || "Something went wrong while deleting your resumes.",
       );
     } finally {
-      setIsWiping(false);
+      setIsDeleting(false);
     }
   };
 
@@ -73,37 +122,86 @@ const Settings = () => {
             <div>
               <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
               <p className="text-sm text-gray-500 mt-1">
-                These actions are permanent and cannot be undone.
+                Select the resumes you want to permanently remove.
               </p>
             </div>
 
-            {wipeComplete ? (
+            {deleteSuccessCount !== null && (
               <div className="rounded-xl bg-green-50 border border-green-200 p-4">
                 <p className="text-sm text-green-700 font-medium">
-                  All your resume data has been wiped.
+                  Deleted {deleteSuccessCount} resume
+                  {deleteSuccessCount !== 1 ? "s" : ""}.
                 </p>
-              </div>
-            ) : (
-              <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <p className="font-semibold text-gray-800">
-                    Wipe all resume data
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Permanently deletes every resume, image, and feedback you've
-                    uploaded.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  className="text-sm font-medium px-4 py-2 rounded-full bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
-                >
-                  Wipe Data
-                </button>
               </div>
             )}
 
-            {wipeError && <p className="text-sm text-red-600">{wipeError}</p>}
+            {deleteError && (
+              <p className="text-sm text-red-600">{deleteError}</p>
+            )}
+
+            {loadingResumes ? (
+              <p className="text-sm text-gray-400">Loading your resumes...</p>
+            ) : resumes.length === 0 ? (
+              <p className="text-sm text-gray-400">
+                You don't have any resumes stored yet.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-700 cursor-pointer"
+                  >
+                    {allSelected ? "Deselect All" : "Select All"}
+                  </button>
+                  <span className="text-xs text-gray-400">
+                    {selectedIds.size} of {resumes.length} selected
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
+                  {resumes.map((resume) => (
+                    <label
+                      key={resume.id}
+                      className="flex items-center gap-3 rounded-xl border border-gray-100 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(resume.id)}
+                        onChange={() => toggleSelected(resume.id)}
+                        className="!w-4 !p-0 accent-red-600"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {resume.companyName || "Resume"}
+                          {resume.isRevision && (
+                            <span className="ml-2 text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                              AI Revised
+                            </span>
+                          )}
+                        </p>
+                        {resume.jobTitle && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {resume.jobTitle}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {resume.feedback?.overallScore ?? "—"}/100
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setShowConfirm(true)}
+                  disabled={selectedIds.size === 0}
+                  className="w-fit text-sm font-medium px-4 py-2 rounded-full bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Delete Selected ({selectedIds.size})
+                </button>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -129,10 +227,13 @@ const Settings = () => {
                 </svg>
               </div>
               <div>
-                <p className="font-bold text-gray-900 text-lg">Are you sure?</p>
+                <p className="font-bold text-gray-900 text-lg">
+                  Delete {selectedIds.size} resume
+                  {selectedIds.size !== 1 ? "s" : ""}?
+                </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  This will permanently delete all your resumes, images, and
-                  feedback. This cannot be undone.
+                  This will permanently delete the selected resumes, their
+                  images, and feedback. This cannot be undone.
                 </p>
               </div>
             </div>
@@ -158,16 +259,16 @@ const Settings = () => {
                   setConfirmText("");
                 }}
                 className="text-sm font-medium px-4 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
-                disabled={isWiping}
+                disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                onClick={handleWipeData}
-                disabled={!isConfirmValid || isWiping}
+                onClick={handleDeleteSelected}
+                disabled={!isConfirmValid || isDeleting}
                 className="text-sm font-medium px-4 py-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {isWiping ? "Wiping..." : "Permanently Delete"}
+                {isDeleting ? "Deleting..." : "Permanently Delete"}
               </button>
             </div>
           </div>
