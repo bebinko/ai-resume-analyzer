@@ -1,255 +1,29 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import Navbar from "~/components/Navbar";
+import ProgressSteps from "~/components/ProgressSteps";
+import CoverLetterCard from "~/components/CoverLetterCard";
 import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
 import { generateUUID } from "~/lib/utils";
+import { buildRevisionPrompt, buildCoverLetterPrompt } from "~/lib/prompts";
+import {
+  buildPdf,
+  buildCoverLetterPdf,
+  buildCoverLetterDocx,
+} from "~/lib/documentBuilders";
+import type {
+  RevisedResume,
+  CoverLetterData,
+  LoadedResumeData,
+} from "~/lib/documentTypes";
 
 export const meta = () => [
   { title: "Breezume | AI Revisions" },
   { name: "description", content: "Apply AI-powered revisions to your resume" },
 ];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ResumedSection {
-  heading: string;
-  content: string;
-}
-
-interface RevisedResume {
-  name: string;
-  contactLine: string;
-  summary?: string;
-  sections: ResumedSection[];
-  changeLog: string[];
-}
-
-// ─── AI prompt ────────────────────────────────────────────────────────────────
-
-const buildRevisionPrompt = (
-  feedback: Feedback,
-  jobTitle: string,
-  jobDescription: string,
-) => `
-You are an expert resume editor. You have already analyzed a resume and produced structured feedback. 
-Now, using the ORIGINAL RESUME (attached as a PDF) and the feedback below, produce a fully revised resume.
-
-FEEDBACK SUMMARY:
-- Overall Score: ${feedback.overallScore}/100
-- Tone & Style (${feedback.toneAndStyle.score}/100): ${feedback.toneAndStyle.tips.map((t) => t.tip).join("; ")}
-- Content (${feedback.content.score}/100): ${feedback.content.tips.map((t) => t.tip).join("; ")}
-- Structure (${feedback.structure.score}/100): ${feedback.structure.tips.map((t) => t.tip).join("; ")}
-- Skills (${feedback.skills.score}/100): ${feedback.skills.tips.map((t) => t.tip).join("; ")}
-- ATS Issues: ${feedback.ATS.tips
-  .filter((t) => t.type === "improve")
-  .map((t) => t.tip)
-  .join("; ")}
-
-TARGET ROLE: ${jobTitle || "Not specified"}
-JOB DESCRIPTION: ${jobDescription || "Not provided"}
-
-INSTRUCTIONS:
-1. Read the original resume text from the attached PDF carefully.
-2. Apply ALL "improve" feedback suggestions.
-3. Preserve ALL real facts (names, dates, companies, degrees, actual achievements).
-4. Strengthen bullet points with action verbs and quantified results where the original has them or implies them.
-5. Tailor language toward the target role and job description if provided.
-6. Improve ATS keyword density based on the job description.
-7. Return ONLY valid JSON in this exact shape — no markdown, no backticks, no explanation:
-
-{
-  "name": "Candidate Full Name",
-  "contactLine": "email | phone | linkedin | location",
-  "summary": "Optional 2-3 sentence professional summary (omit key if not applicable)",
-  "sections": [
-    {
-      "heading": "EXPERIENCE",
-      "content": "Company Name — Job Title | Date Range\\nBullet one\\nBullet two\\n\\nCompany 2 — Title | Date Range\\nBullet"
-    },
-    {
-      "heading": "EDUCATION",
-      "content": "University Name — Degree, Field | Year"
-    },
-    {
-      "heading": "SKILLS",
-      "content": "Category: skill1, skill2\\nCategory2: skill3"
-    }
-  ],
-  "changeLog": [
-    "Strengthened action verbs in Experience section",
-    "Added ATS keywords: project management, agile, stakeholder",
-    "Reformatted Skills into categories for ATS readability"
-  ]
-}
-`;
-
-// ─── PDF builder (pdf-lib) ─────────────────────────────────────────────────────
-
-async function buildPdf(revised: RevisedResume): Promise<Blob> {
-  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-
-  const doc = await PDFDocument.create();
-  const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
-
-  const PAGE_W = 612;
-  const PAGE_H = 792;
-  const MARGIN = 50;
-  const LINE_H = 14;
-  const COL_W = PAGE_W - MARGIN * 2;
-
-  const cDark = rgb(0.1, 0.1, 0.17);
-  const cMuted = rgb(0.33, 0.33, 0.33);
-  const cDivider = rgb(0.82, 0.84, 0.86);
-  const cAccent = rgb(0.25, 0.32, 0.71);
-
-  let page = doc.addPage([PAGE_W, PAGE_H]);
-  let y = PAGE_H - MARGIN;
-
-  const newPage = () => {
-    page = doc.addPage([PAGE_W, PAGE_H]);
-    y = PAGE_H - MARGIN;
-  };
-
-  const checkY = (needed: number) => {
-    if (y - needed < MARGIN) newPage();
-  };
-
-  const wrapText = (
-    text: string,
-    font: typeof fontRegular,
-    size: number,
-    maxW: number,
-  ): string[] => {
-    const words = text.split(" ");
-    const lines: string[] = [];
-    let current = "";
-    for (const word of words) {
-      const candidate = current ? `${current} ${word}` : word;
-      if (font.widthOfTextAtSize(candidate, size) <= maxW) {
-        current = candidate;
-      } else {
-        if (current) lines.push(current);
-        current = word;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.length ? lines : [""];
-  };
-
-  const drawText = (
-    text: string,
-    opts: {
-      font?: typeof fontRegular;
-      size?: number;
-      color?: ReturnType<typeof rgb>;
-      indent?: number;
-      gap?: number;
-    },
-  ) => {
-    const font = opts.font ?? fontRegular;
-    const size = opts.size ?? 10;
-    const color = opts.color ?? cMuted;
-    const indent = opts.indent ?? 0;
-    const gap = opts.gap ?? 3;
-    const maxW = COL_W - indent;
-
-    const lines = wrapText(text, font, size, maxW);
-    for (const line of lines) {
-      checkY(size + gap);
-      page.drawText(line, { x: MARGIN + indent, y, size, font, color });
-      y -= size + gap;
-    }
-  };
-
-  const drawDivider = (gap = 8) => {
-    checkY(gap * 2);
-    y -= gap / 2;
-    page.drawLine({
-      start: { x: MARGIN, y },
-      end: { x: PAGE_W - MARGIN, y },
-      thickness: 0.5,
-      color: cDivider,
-    });
-    y -= gap;
-  };
-
-  drawText(revised.name, { font: fontBold, size: 20, color: cDark, gap: 5 });
-  drawText(revised.contactLine, { size: 9, color: cMuted, gap: 4 });
-  drawDivider(10);
-
-  if (revised.summary) {
-    drawText("PROFESSIONAL SUMMARY", {
-      font: fontBold,
-      size: 9,
-      color: cAccent,
-      gap: 4,
-    });
-    drawText(revised.summary, { size: 10, color: cMuted, gap: 4 });
-    drawDivider(8);
-  }
-
-  for (const section of revised.sections) {
-    drawText(section.heading.toUpperCase(), {
-      font: fontBold,
-      size: 9,
-      color: cAccent,
-      gap: 5,
-    });
-
-    const lines = section.content.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) {
-        y -= 4;
-        continue;
-      }
-
-      if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
-        checkY(LINE_H);
-        page.drawText("•", {
-          x: MARGIN + 8,
-          y,
-          size: 10,
-          font: fontRegular,
-          color: cMuted,
-        });
-        const bulletText = trimmed.replace(/^[-•]\s*/, "");
-        const wrapped = wrapText(bulletText, fontRegular, 10, COL_W - 20);
-        for (let i = 0; i < wrapped.length; i++) {
-          checkY(LINE_H);
-          page.drawText(wrapped[i], {
-            x: MARGIN + 20,
-            y,
-            size: 10,
-            font: fontRegular,
-            color: cMuted,
-          });
-          y -= LINE_H;
-        }
-      } else {
-        const isSectionHead = /[|—–]/.test(trimmed);
-        drawText(trimmed, {
-          font: isSectionHead ? fontBold : fontRegular,
-          size: 10,
-          color: isSectionHead ? cDark : cMuted,
-          gap: isSectionHead ? 2 : 3,
-        });
-      }
-    }
-    drawDivider(8);
-  }
-
-  const pdfBytes = await doc.save();
-  return new Blob([pdfBytes.buffer as ArrayBuffer], {
-    type: "application/pdf",
-  });
-}
-
-// ─── Steps UI helper ──────────────────────────────────────────────────────────
-
-const steps = [
+const revisionSteps = [
   { id: "loading", label: "Loading your resume" },
   { id: "revising", label: "Claude is rewriting your resume" },
   { id: "building", label: "Building revised PDF" },
@@ -258,21 +32,42 @@ const steps = [
   { id: "done", label: "Done!" },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const coverLetterOnlySteps = [
+  { id: "loading", label: "Loading your resume" },
+  { id: "ready", label: "Ready to generate" },
+];
 
 const Revise = () => {
   const { auth, isLoading, fs, ai, kv } = usePuterStore();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const coverLetterOnly = searchParams.get("mode") === "cover-letter";
   const navigate = useNavigate();
+
+  const steps = coverLetterOnly ? coverLetterOnlySteps : revisionSteps;
 
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const [resumeData, setResumeData] = useState<LoadedResumeData | null>(null);
   const [revisedData, setRevisedData] = useState<RevisedResume | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [changeLog, setChangeLog] = useState<string[]>([]);
   const [revisedResumeId, setRevisedResumeId] = useState<string | null>(null);
+
+  const [coverLetterData, setCoverLetterData] =
+    useState<CoverLetterData | null>(null);
+  const [coverLetterPdfBlob, setCoverLetterPdfBlob] = useState<Blob | null>(
+    null,
+  );
+  const [coverLetterDocxBlob, setCoverLetterDocxBlob] = useState<Blob | null>(
+    null,
+  );
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
+  const [coverLetterError, setCoverLetterError] = useState<string | null>(null);
+  const [candidateName, setCandidateName] = useState("");
+  const [candidateContact, setCandidateContact] = useState("");
 
   const hasFetched = useRef(false);
 
@@ -285,28 +80,41 @@ const Revise = () => {
   useEffect(() => {
     if (isLoading || !auth.isAuthenticated || hasFetched.current) return;
     hasFetched.current = true;
-    runRevision();
+    if (coverLetterOnly) {
+      loadResumeOnly();
+    } else {
+      runRevision();
+    }
   }, [isLoading, auth.isAuthenticated]);
 
-  const runRevision = async () => {
+  const loadResumeOnly = async () => {
     try {
-      // ── Step 0: Load resume metadata ──────────────────────────────────────
       setCurrentStep(0);
       const raw = await kv.get(`resume:${id}`);
       if (!raw)
         throw new Error("Resume not found. Please go back and try again.");
-      const data = JSON.parse(raw) as {
-        resumePath: string;
-        imagePath: string;
-        companyName: string;
-        jobTitle: string;
-        jobDescription: string;
-        feedback: Feedback;
-      };
+      const data = JSON.parse(raw) as LoadedResumeData;
 
       if (!data.feedback) throw new Error("No feedback found for this resume.");
+      setResumeData(data);
+      setCurrentStep(1);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Something went wrong. Please try again.");
+    }
+  };
 
-      // ── Step 1: Call Claude to revise ─────────────────────────────────────
+  const runRevision = async () => {
+    try {
+      setCurrentStep(0);
+      const raw = await kv.get(`resume:${id}`);
+      if (!raw)
+        throw new Error("Resume not found. Please go back and try again.");
+      const data = JSON.parse(raw) as LoadedResumeData;
+
+      if (!data.feedback) throw new Error("No feedback found for this resume.");
+      setResumeData(data);
+
       setCurrentStep(1);
       const prompt = buildRevisionPrompt(
         data.feedback,
@@ -390,12 +198,10 @@ const Revise = () => {
       setRevisedData(revised);
       setChangeLog(revised.changeLog || []);
 
-      // ── Step 2: Build PDF ─────────────────────────────────────────────────
       setCurrentStep(2);
       const blob = await buildPdf(revised);
       setPdfBlob(blob);
 
-      // ── Step 3: Render preview image ──────────────────────────────────────
       setCurrentStep(3);
       const pdfFile = new File([blob], "revised-resume.pdf", {
         type: "application/pdf",
@@ -406,7 +212,6 @@ const Revise = () => {
         setPreviewUrl(url);
       }
 
-      // ── Step 4: Store the revised resume so it shows on the home page ─────
       setCurrentStep(4);
       try {
         const uploadedRevisedResume = await fs.upload([pdfFile]);
@@ -435,8 +240,6 @@ const Revise = () => {
         await kv.set(`resume:${newId}`, JSON.stringify(revisedRecord));
         setRevisedResumeId(newId);
       } catch (storeErr) {
-        // Don't fail the whole flow if storage fails — the user can still
-        // preview/download the revision, they just won't see it saved.
         console.error("Failed to store revised resume:", storeErr);
       }
 
@@ -444,6 +247,80 @@ const Revise = () => {
     } catch (err: any) {
       console.error(err);
       setError(err?.message || "Something went wrong. Please try again.");
+    }
+  };
+
+  const generateCoverLetter = async () => {
+    if (!resumeData) return;
+    setIsGeneratingCoverLetter(true);
+    setCoverLetterError(null);
+
+    try {
+      const prompt = buildCoverLetterPrompt(
+        resumeData.companyName,
+        resumeData.jobTitle,
+        resumeData.jobDescription,
+      );
+
+      const AI_TIMEOUT_MS = 60_000;
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                "The AI took too long to respond. This may be due to a Puter free-tier rate limit. Please wait a moment and try again.",
+              ),
+            ),
+          AI_TIMEOUT_MS,
+        ),
+      );
+
+      const result: any = await Promise.race([
+        ai.feedback(resumeData.resumePath, prompt),
+        timeoutPromise,
+      ]);
+
+      if (!result)
+        throw new Error(
+          "The AI returned an empty response. Please try again shortly.",
+        );
+
+      const rawText: string =
+        typeof result.message.content === "string"
+          ? result.message.content
+          : result.message.content[0].text;
+
+      const cleaned = rawText
+        .replace(/^```json\s*/i, "")
+        .replace(/```\s*$/i, "")
+        .trim();
+
+      const coverLetter: CoverLetterData = JSON.parse(cleaned);
+      setCoverLetterData(coverLetter);
+
+      const nameForLetter = revisedData?.name || candidateName;
+      const contactForLetter = revisedData?.contactLine || candidateContact;
+
+      const pdf = await buildCoverLetterPdf(
+        coverLetter,
+        nameForLetter,
+        contactForLetter,
+      );
+      setCoverLetterPdfBlob(pdf);
+
+      const docx = await buildCoverLetterDocx(
+        coverLetter,
+        nameForLetter,
+        contactForLetter,
+      );
+      setCoverLetterDocxBlob(docx);
+    } catch (err: any) {
+      console.error(err);
+      setCoverLetterError(
+        err?.message || "Something went wrong generating the cover letter.",
+      );
+    } finally {
+      setIsGeneratingCoverLetter(false);
     }
   };
 
@@ -457,7 +334,29 @@ const Revise = () => {
     URL.revokeObjectURL(url);
   };
 
-  const isDone = currentStep === 5 && !error;
+  const handleDownloadCoverLetterPdf = () => {
+    if (!coverLetterPdfBlob) return;
+    const url = URL.createObjectURL(coverLetterPdfBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cover-letter-${id?.slice(0, 8)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadCoverLetterDocx = () => {
+    if (!coverLetterDocxBlob) return;
+    const url = URL.createObjectURL(coverLetterDocxBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cover-letter-${id?.slice(0, 8)}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const isDone = coverLetterOnly
+    ? currentStep === 1 && !error
+    : currentStep === 5 && !error;
 
   return (
     <main className="bg-white min-h-screen">
@@ -470,9 +369,13 @@ const Revise = () => {
               Back to Review
             </span>
           </Link>
-          <h1>AI Resume Revision</h1>
+          <h1>
+            {coverLetterOnly ? "Cover Letter Generator" : "AI Resume Revision"}
+          </h1>
           <h2>
-            Claude will rewrite your resume based on the feedback it provided.
+            {coverLetterOnly
+              ? "Claude will write a tailored cover letter based on your resume and the job description."
+              : "Claude will rewrite your resume based on the feedback it provided."}
           </h2>
         </div>
 
@@ -510,7 +413,8 @@ const Revise = () => {
                   setError(null);
                   setCurrentStep(0);
                   hasFetched.current = false;
-                  runRevision();
+                  if (coverLetterOnly) loadResumeOnly();
+                  else runRevision();
                 }}
               >
                 ↺ Retry
@@ -523,126 +427,119 @@ const Revise = () => {
         )}
 
         {!error && !isDone && (
-          <div className="flex flex-col items-center gap-8 py-10">
-            <img
-              src="/images/resume-scan.gif"
-              className="w-[220px]"
-              alt="scanning"
-            />
-            <div className="flex flex-col gap-3 w-full max-w-sm">
-              {steps.map((step, i) => (
-                <div key={step.id} className="flex items-center gap-3">
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 transition-all duration-300 ${
-                      i < currentStep
-                        ? "bg-green-500 text-white"
-                        : i === currentStep
-                          ? "bg-blue-500 text-white animate-pulse"
-                          : "bg-gray-200 text-gray-400"
-                    }`}
-                  >
-                    {i < currentStep ? "✓" : i + 1}
-                  </div>
-                  <span
-                    className={`text-sm font-medium transition-colors duration-300 ${
-                      i < currentStep
-                        ? "text-green-600"
-                        : i === currentStep
-                          ? "text-blue-600"
-                          : "text-gray-400"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ProgressSteps steps={steps} currentStep={currentStep} />
         )}
 
         {isDone && (
           <div className="flex flex-col gap-8 pb-16 animate-in fade-in duration-700">
-            <div className="flex flex-row flex-wrap gap-4 items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Revised Resume
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">
-                  Claude applied {changeLog.length} improvement
-                  {changeLog.length !== 1 ? "s" : ""} to your resume.
-                  {revisedResumeId && " Saved to your dashboard."}
-                </p>
-              </div>
-              <div className="flex gap-3">
+            {!coverLetterOnly && (
+              <>
+                <div className="flex flex-row flex-wrap gap-4 items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Revised Resume
+                    </h2>
+                    <p className="text-gray-500 text-sm mt-1">
+                      Claude applied {changeLog.length} improvement
+                      {changeLog.length !== 1 ? "s" : ""} to your resume.
+                      {revisedResumeId && " Saved to your dashboard."}
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <Link to={`/resume/${id}`} className="back-button">
+                      ← Back to Review
+                    </Link>
+                    {revisedResumeId && (
+                      <Link
+                        to={`/resume/${revisedResumeId}`}
+                        className="back-button"
+                      >
+                        View Saved Revision
+                      </Link>
+                    )}
+                    <button
+                      onClick={handleDownload}
+                      className="primary-button w-fit flex items-center gap-2"
+                    >
+                      <img src="/icons/check.svg" alt="" className="w-4 h-4" />
+                      Download Revised PDF
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
+                  <div className="flex-1 min-w-0">
+                    {previewUrl ? (
+                      <div className="gradient-border animate-in fade-in duration-1000">
+                        <img
+                          src={previewUrl}
+                          alt="Revised resume preview"
+                          className="w-full h-auto object-contain rounded-2xl"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 h-64 flex items-center justify-center">
+                        <p className="text-gray-400">Preview unavailable</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="lg:w-80 flex-shrink-0 flex flex-col gap-4">
+                    <div className="rounded-2xl shadow-md bg-white p-6 flex flex-col gap-4">
+                      <h3 className="text-xl font-bold text-gray-900">
+                        What Claude Changed
+                      </h3>
+                      <ul className="flex flex-col gap-3">
+                        {changeLog.map((change, i) => (
+                          <li key={i} className="flex gap-3 items-start">
+                            <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <img
+                                src="/icons/check.svg"
+                                alt=""
+                                className="w-3 h-3"
+                              />
+                            </div>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                              {change}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      onClick={handleDownload}
+                      className="primary-button w-full flex items-center justify-center gap-2"
+                    >
+                      Download Revised PDF
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {coverLetterOnly && (
+              <div className="flex justify-end">
                 <Link to={`/resume/${id}`} className="back-button">
                   ← Back to Review
                 </Link>
-                {revisedResumeId && (
-                  <Link
-                    to={`/resume/${revisedResumeId}`}
-                    className="back-button"
-                  >
-                    View Saved Revision
-                  </Link>
-                )}
-                <button
-                  onClick={handleDownload}
-                  className="primary-button w-fit flex items-center gap-2"
-                >
-                  <img src="/icons/check.svg" alt="" className="w-4 h-4" />
-                  Download Revised PDF
-                </button>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
-              <div className="flex-1 min-w-0">
-                {previewUrl ? (
-                  <div className="gradient-border animate-in fade-in duration-1000">
-                    <img
-                      src={previewUrl}
-                      alt="Revised resume preview"
-                      className="w-full h-auto object-contain rounded-2xl"
-                    />
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 h-64 flex items-center justify-center">
-                    <p className="text-gray-400">Preview unavailable</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="lg:w-80 flex-shrink-0 flex flex-col gap-4">
-                <div className="rounded-2xl shadow-md bg-white p-6 flex flex-col gap-4">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    What Claude Changed
-                  </h3>
-                  <ul className="flex flex-col gap-3">
-                    {changeLog.map((change, i) => (
-                      <li key={i} className="flex gap-3 items-start">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <img
-                            src="/icons/check.svg"
-                            alt=""
-                            className="w-3 h-3"
-                          />
-                        </div>
-                        <p className="text-sm text-gray-600 leading-relaxed">
-                          {change}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <button
-                  onClick={handleDownload}
-                  className="primary-button w-full flex items-center justify-center gap-2"
-                >
-                  Download Revised PDF
-                </button>
-              </div>
-            </div>
+            <CoverLetterCard
+              coverLetterData={coverLetterData}
+              candidateName={candidateName}
+              setCandidateName={setCandidateName}
+              candidateContact={candidateContact}
+              setCandidateContact={setCandidateContact}
+              hasRevisedData={Boolean(revisedData)}
+              displayName={revisedData?.name || candidateName || "Your Name"}
+              isGenerating={isGeneratingCoverLetter}
+              error={coverLetterError}
+              onGenerate={generateCoverLetter}
+              onDownloadPdf={handleDownloadCoverLetterPdf}
+              onDownloadDocx={handleDownloadCoverLetterDocx}
+            />
           </div>
         )}
       </section>
