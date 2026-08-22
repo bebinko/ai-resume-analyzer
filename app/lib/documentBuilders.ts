@@ -332,3 +332,82 @@ export async function buildCoverLetterDocx(
 
   return await Packer.toBlob(doc);
 }
+
+export async function buildResumeDocx(revised: RevisedResume): Promise<Blob> {
+  const { Document, Packer, Paragraph, TextRun } = await import("docx");
+
+  const children: any[] = [];
+
+  children.push(
+    new Paragraph({
+      children: [new TextRun({ text: revised.name, bold: true, size: 32 })],
+    }),
+  );
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({ text: revised.contactLine, size: 18, color: "555555" }),
+      ],
+    }),
+  );
+  children.push(new Paragraph({ text: "" }));
+
+  if (revised.summary) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "PROFESSIONAL SUMMARY",
+            bold: true,
+            size: 20,
+            color: "3F51B5",
+          }),
+        ],
+      }),
+    );
+    children.push(new Paragraph({ text: revised.summary }));
+    children.push(new Paragraph({ text: "" }));
+  }
+
+  for (const section of revised.sections) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: section.heading.toUpperCase(),
+            bold: true,
+            size: 20,
+            color: "3F51B5",
+          }),
+        ],
+      }),
+    );
+
+    const lines = section.content.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        children.push(new Paragraph({ text: "" }));
+        continue;
+      }
+
+      if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
+        const bulletText = trimmed.replace(/^[-•]\s*/, "");
+        children.push(
+          new Paragraph({ text: bulletText, bullet: { level: 0 } }),
+        );
+      } else {
+        const isSectionHead = /[|—–]/.test(trimmed);
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: trimmed, bold: isSectionHead })],
+          }),
+        );
+      }
+    }
+    children.push(new Paragraph({ text: "" }));
+  }
+
+  const doc = new Document({ sections: [{ children }] });
+  return await Packer.toBlob(doc);
+}

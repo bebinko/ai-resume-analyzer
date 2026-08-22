@@ -161,6 +161,41 @@ const Resume = () => {
                 </Link>
               </div>
               {/* ─────────────────────────────────────────────────────────── */}
+              {/* ── Custom Revision CTA ───────────────────────────────────── */}
+              <div className="rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 border border-green-100 shadow-md p-6 flex flex-col gap-4">
+                <div className="flex flex-row gap-3 items-center">
+                  <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center flex-shrink-0">
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900">
+                      Have Your Own Ideas?
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Tell Claude exactly what you want changed on your resume.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  to={`/custom-revise/${id}`}
+                  className="primary-button w-fit flex items-center gap-2 text-base bg-green-600 hover:bg-green-700"
+                >
+                  Suggest My Own Revisions
+                </Link>
+              </div>
+              {/* ─────────────────────────────────────────────────────────── */}
               {/* ─────────────────────────────────────────────────────────── */}
             </div>
           ) : (
