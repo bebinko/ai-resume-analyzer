@@ -25,3 +25,12 @@ export interface LoadedResumeData {
   jobDescription: string;
   feedback: Feedback;
 }
+
+export interface ScamCheckResult {
+  riskLevel: "low" | "medium" | "high";
+  flags: {
+    signal: string;
+    explanation: string;
+  }[];
+  recommendation: string;
+}

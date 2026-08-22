@@ -55,3 +55,43 @@ INSTRUCTIONS:
   ]
 }
 `;
+export const buildScamCheckPrompt = (
+  companyName: string,
+  jobTitle: string,
+  jobDescription: string,
+) => `
+You are an expert at spotting fraudulent and fake job postings. Analyze the following job posting details 
+for common red flags associated with job scams.
+
+COMPANY: ${companyName || "Not provided"}
+JOB TITLE: ${jobTitle || "Not provided"}
+JOB DESCRIPTION: ${jobDescription || "Not provided"}
+
+Look for these kinds of red flags specifically:
+- Salary that seems unrealistic for the role, experience level, or location
+- Pressure/urgency language ("apply now", "limited spots", "start immediately")
+- Any mention of upfront payment, purchasing equipment, providing bank details, or paying for training/certification
+- Vague, generic, or copy-pasted-sounding descriptions lacking real specifics about duties
+- Requests for sensitive personal information (SSN, bank account) as part of the application itself
+- Interviews conducted only through chat apps (Telegram, WhatsApp) rather than normal channels
+- Job title/description mismatch or inconsistency
+- No specifics about company location, team, or manager
+
+If the company name or job description is missing or too sparse to analyze meaningfully, note that in your 
+recommendation rather than inventing details.
+
+Return ONLY valid JSON in this exact shape — no markdown, no backticks, no explanation:
+
+{
+  "riskLevel": "low" | "medium" | "high",
+  "flags": [
+    {
+      "signal": "Short label for the red flag",
+      "explanation": "1-2 sentence explanation of why this is concerning"
+    }
+  ],
+  "recommendation": "1-2 sentence overall guidance for the candidate"
+}
+
+If no red flags are found, return an empty "flags" array and set "riskLevel" to "low".
+`;

@@ -12,3 +12,15 @@ export const buildGoogleJobsUrl = (title: string, location?: string) =>
   `https://www.google.com/search?q=${encodeURIComponent(
     `${title} jobs${location ? ` near ${location}` : ""}`,
   )}&ibp=htl;jobs`;
+
+export const buildCompanySearchUrl = (companyName: string) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`"${companyName}" official website`)}`;
+
+export const buildCompanyLinkedInUrl = (companyName: string) =>
+  `https://www.linkedin.com/search/results/companies/?keywords=${encodeURIComponent(companyName)}`;
+
+export const buildCompanyGlassdoorUrl = (companyName: string) =>
+  `https://www.glassdoor.com/Search/results.htm?keyword=${encodeURIComponent(companyName)}`;
+
+export const buildCompanyScamCheckUrl = (companyName: string) =>
+  `https://www.google.com/search?q=${encodeURIComponent(`"${companyName}" scam reviews complaints`)}`;

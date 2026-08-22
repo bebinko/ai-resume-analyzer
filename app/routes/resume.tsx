@@ -5,6 +5,7 @@ import Details from "~/components/Details";
 import Summary from "~/components/Summary";
 import JobTitleSuggestions from "~/components/JobTitleSuggestions";
 import JobPostings from "~/components/JobPostings";
+import JobLegitimacyCheck from "~/components/JobLegitimacycheck";
 import { usePuterStore } from "~/lib/puter";
 
 export const meta = () => [
@@ -19,6 +20,9 @@ const Resume = () => {
   const [resumeUrl, setResumeUrl] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isRevision, setIsRevision] = useState(false);
+  const [companyName, setCompanyName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
+  const [jobDescription, setJobDescription] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +46,9 @@ const Resume = () => {
       setImageUrl(imageUrl);
       setFeedback(data.feedback);
       setIsRevision(Boolean(data.isRevision));
+      setCompanyName(data.companyName || "");
+      setJobTitle(data.jobTitle || "");
+      setJobDescription(data.jobDescription || "");
     };
     loadResume();
   }, [id]);
@@ -71,6 +78,11 @@ const Resume = () => {
                 suggestions={feedback.ATS.tips || []}
               />
               <Details feedback={feedback} />
+              <JobLegitimacyCheck
+                companyName={companyName}
+                jobTitle={jobTitle}
+                jobDescription={jobDescription}
+              />
 
               {/* ── AI Revision CTA — hidden for resumes that are already revisions ── */}
               {!isRevision && (
