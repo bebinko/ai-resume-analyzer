@@ -24,3 +24,8 @@ export const buildCompanyGlassdoorUrl = (companyName: string) =>
 
 export const buildCompanyScamCheckUrl = (companyName: string) =>
   `https://www.google.com/search?q=${encodeURIComponent(`"${companyName}" scam reviews complaints`)}`;
+
+export const buildCompanyIndeedUrl = (companyName: string) =>
+  `https://www.indeed.com/cmp/${encodeURIComponent(
+    companyName.trim().replace(/\s+/g, "-"),
+  )}/reviews`;

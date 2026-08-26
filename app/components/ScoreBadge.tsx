@@ -6,6 +6,7 @@ const ScoreBadge: React.FC<ScoreBadgeProps> = ({ score }) => {
   let badgeColor = "";
   let badgeText = "";
 
+  // Three tiers: strong (71+), good start (50-70), needs work (below 50)
   if (score > 70) {
     badgeColor = "bg-badge-green text-green-600";
     badgeText = "Strong";

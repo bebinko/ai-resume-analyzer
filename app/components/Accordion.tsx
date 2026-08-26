@@ -2,6 +2,9 @@ import type { ReactNode } from "react";
 import React, { createContext, useContext, useState } from "react";
 import { cn } from "~/lib/utils";
 
+// Tracks which accordion items are currently open. Shared via context so
+// AccordionItem/AccordionHeader/AccordionContent can coordinate without
+// prop drilling through however deeply the consumer nests them.
 interface AccordionContextType {
   activeItems: string[];
   toggleItem: (id: string) => void;
@@ -12,6 +15,8 @@ const AccordionContext = createContext<AccordionContextType | undefined>(
   undefined,
 );
 
+// Throws if any child is rendered outside an <Accordion>, so misuse fails
+// fast instead of silently rendering broken toggle behavior.
 const useAccordion = () => {
   const context = useContext(AccordionContext);
   if (!context) {
@@ -40,10 +45,13 @@ export const Accordion: React.FC<AccordionProps> = ({
   const toggleItem = (id: string) => {
     setActiveItems((prev) => {
       if (allowMultiple) {
+        // Multiple items can stay open at once — just add/remove this one.
         return prev.includes(id)
           ? prev.filter((item) => item !== id)
           : [...prev, id];
       } else {
+        // Single-open mode: clicking the open item closes it, clicking a
+        // different item replaces whatever was open.
         return prev.includes(id) ? [] : [id];
       }
     });
@@ -66,6 +74,8 @@ interface AccordionItemProps {
   className?: string;
 }
 
+// Just a styled wrapper — the actual open/close state lives in context,
+// referenced by id from AccordionHeader/AccordionContent below.
 export const AccordionItem: React.FC<AccordionItemProps> = ({
   id,
   children,
@@ -96,6 +106,7 @@ export const AccordionHeader: React.FC<AccordionHeaderProps> = ({
   const { toggleItem, isItemActive } = useAccordion();
   const isActive = isItemActive(itemId);
 
+  // Chevron rotates 180deg when open. Only used if no custom icon is passed.
   const defaultIcon = (
     <svg
       className={cn("w-5 h-5 transition-transform duration-200", {

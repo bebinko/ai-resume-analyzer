@@ -5,6 +5,8 @@ const buildIndeedUrl = (title: string) =>
   `https://www.indeed.com/jobs?q=${encodeURIComponent(title)}`;
 
 const JobTitleSuggestions = ({ titles }: { titles: string[] }) => {
+  // Older resumes analyzed before suggestedJobTitles was added to the AI
+  // prompt won't have this field — render nothing rather than an empty card.
   if (!titles || titles.length === 0) return null;
 
   return (
@@ -13,6 +15,7 @@ const JobTitleSuggestions = ({ titles }: { titles: string[] }) => {
         <p className="text-xl font-bold text-gray-900">
           Job Titles You'd Fit Well
         </p>
+
         <p className="text-sm text-gray-500 mt-1">
           Based on your skills and experience, try searching these roles.
         </p>

@@ -54,6 +54,8 @@ const Upload = () => {
     const uploadedFile = await fs.upload([file]);
     if (!uploadedFile) return setStatusText("Error: Failed to upload file");
 
+    // The AI model reads the resume as an image attachment, not the raw
+    // PDF, so a rendered page image is generated and uploaded separately.
     setStatusText("Converting to image...");
     const imageFile = await convertPdfToImage(file);
     if (!imageFile.file)
@@ -74,6 +76,9 @@ const Upload = () => {
       jobDescription,
       feedback: "",
     };
+    // Written once here with an empty feedback field so the record exists
+    // (and is visible on the dashboard) even if the AI call below fails,
+    // then overwritten below once feedback actually comes back.
     await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
     setStatusText("Analyzing...");

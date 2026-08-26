@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
+// SVG dasharray/dashoffset of 0 renders as a solid, fully-visible stroke —
+// not hidden. Starting pathLength at a value larger than the real arc
+// length guarantees the arc renders empty on the very first paint, before
+// getTotalLength() has a chance to measure the actual path.
 const SENTINEL_LENGTH = 1000;
 
 const ScoreGauge = ({ score = 75 }: { score: number }) => {
@@ -16,6 +20,10 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
     setPathLength(length);
     setAnimatedScore(0);
 
+    // Animated manually with requestAnimationFrame rather than a CSS
+    // transition — a CSS transition on dashoffset was unreliable here since
+    // the offset briefly jumps when pathLength updates from the sentinel to
+    // its real value, causing a visible flash/retraction on load.
     const duration = 1200;
     let startTime: number | null = null;
 
@@ -23,7 +31,7 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
       if (startTime === null) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const t = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
 
       setAnimatedScore(Math.round(eased * score));
 
@@ -54,10 +62,6 @@ const ScoreGauge = ({ score = 75 }: { score: number }) => {
               <stop offset="0%" stopColor="#ef4444" />
               <stop offset="50%" stopColor="#f59e0b" />
               <stop offset="100%" stopColor="#10b981" />
-              {/*
-              <stop offset="0%" stopColor="#a78bfa" />
-              <stop offset="100%" stopColor="#fca5a5" />
-               */}
             </linearGradient>
           </defs>
 

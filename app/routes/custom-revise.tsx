@@ -46,6 +46,8 @@ const CustomRevise = () => {
   const [changeLog, setChangeLog] = useState<string[]>([]);
   const [revisedResumeId, setRevisedResumeId] = useState<string | null>(null);
 
+  // Guards against double-submission (e.g. rapid double-click), since this
+  // isn't tied to route mount timing the way the other revise flows are.
   const hasStarted = useRef(false);
 
   useEffect(() => {
@@ -93,6 +95,8 @@ const CustomRevise = () => {
         suggestions.trim(),
       );
 
+      // Puter's free-tier AI can hang indefinitely under load, so race it
+      // against a timeout rather than leaving the user stuck on this step.
       const AI_TIMEOUT_MS = 60_000;
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
@@ -113,6 +117,8 @@ const CustomRevise = () => {
           timeoutPromise,
         ]);
       } catch (aiErr: any) {
+        // Rewrite rate-limit errors into a clearer message; anything else
+        // gets re-thrown as-is to the outer catch below.
         const msg: string = aiErr?.message ?? "";
         if (
           msg.toLowerCase().includes("rate") ||
@@ -136,6 +142,8 @@ const CustomRevise = () => {
           ? result.message.content
           : result.message.content[0].text;
 
+      // The model is instructed to return raw JSON but sometimes wraps it
+      // in a markdown code fence anyway — strip that before parsing.
       const cleaned = rawText
         .replace(/^```json\s*/i, "")
         .replace(/```\s*$/i, "")
@@ -169,6 +177,8 @@ const CustomRevise = () => {
       }
 
       setCurrentStep(4);
+      // Storage failure is treated as non-fatal — the user still gets their
+      // download either way, they just won't see a "saved" confirmation.
       try {
         const uploadedResume = await fs.upload([pdfFile]);
         if (!uploadedResume)

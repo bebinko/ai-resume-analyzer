@@ -11,6 +11,7 @@ const ATS = ({
     <div
       className={cn(
         "rounded-2xl shadow-md w-full bg-gradient-to-b to-light-white p-8 flex flex-col gap-4",
+        // Card background shifts with score: green (70+), yellow (50-69), red (<50)
         score > 69
           ? "from-green-100"
           : score > 49

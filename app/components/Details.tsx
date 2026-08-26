@@ -6,6 +6,8 @@ import {
   AccordionItem,
 } from "./Accordion";
 
+// Small pill badge showing a category's score, colored by range:
+// green (70+), yellow (40-69), red (<40).
 const ScoreBadge = ({ score }: { score: number }) => {
   return (
     <div
@@ -54,6 +56,8 @@ const CategoryHeader = ({
   );
 };
 
+// Renders a category's tips twice: first as a compact grid of one-line
+// summaries, then again below as expanded cards with the full explanation.
 const CategoryContent = ({
   tips,
 }: {
@@ -106,6 +110,8 @@ const CategoryContent = ({
   );
 };
 
+// Breaks the AI feedback down into four collapsible sections, one per
+// scoring category, each expandable independently.
 const Details = ({ feedback }: { feedback: Feedback }) => {
   return (
     <div className="flex flex-col gap-4 w-full">

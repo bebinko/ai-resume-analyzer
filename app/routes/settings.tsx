@@ -94,6 +94,8 @@ const Settings = () => {
     }
   };
 
+  // Requires typing "DELETE" (case-insensitive) before the confirm button
+  // is enabled — a plain "yes/no" prompt is too easy to click through.
   const isConfirmValid = confirmText.trim().toUpperCase() === "DELETE";
 
   return (
@@ -106,7 +108,6 @@ const Settings = () => {
         </div>
 
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
-          {/* Account info */}
           <div className="rounded-2xl bg-white shadow-md p-6 flex flex-col gap-2">
             <h3 className="text-lg font-bold text-gray-900">Account</h3>
             <p className="text-sm text-gray-500">
@@ -117,7 +118,6 @@ const Settings = () => {
             </p>
           </div>
 
-          {/* Danger zone */}
           <div className="rounded-2xl bg-white border border-red-200 shadow-md p-6 flex flex-col gap-4">
             <div>
               <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
@@ -206,12 +206,12 @@ const Settings = () => {
         </div>
       </section>
 
-      {/* Confirmation modal */}
       {showConfirm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4 animate-in fade-in duration-150">
             <div className="flex items-start gap-3">
               <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                {/* Warning triangle icon (Heroicons) */}
                 <svg
                   className="w-5 h-5 text-red-600"
                   fill="none"

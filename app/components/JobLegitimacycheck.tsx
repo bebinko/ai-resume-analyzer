@@ -7,10 +7,13 @@ import {
   buildCompanyLinkedInUrl,
   buildCompanyGlassdoorUrl,
   buildCompanyScamCheckUrl,
+  buildCompanyIndeedUrl,
 } from "~/lib/jobSearchLinks";
 
 const RATE_LIMIT_MAX = 5;
 
+// Keying by date means the count resets naturally each day without any
+// cleanup — yesterday's key just stops getting read or written to.
 const getRateLimitKey = () => {
   const today = new Date().toISOString().slice(0, 10);
   return `scam-check-usage:${today}`;
@@ -45,6 +48,8 @@ const JobLegitimacyCheck = ({
   const [result, setResult] = useState<ScamCheckResult | null>(null);
   const [searchesUsed, setSearchesUsed] = useState(0);
 
+  // Nothing to check against if the resume record has no company or job
+  // description on file — this component just doesn't render in that case.
   if (!companyName && !jobDescription) return null;
 
   const loadUsage = async () => {
@@ -67,6 +72,8 @@ const JobLegitimacyCheck = ({
   };
 
   const runCheck = async () => {
+    // Re-check against kv directly rather than trusting local state, in case
+    // the count changed in another tab/session since this component mounted.
     const raw = await kv.get(getRateLimitKey());
     const count = raw ? parseInt(raw, 10) : 0;
 
@@ -93,11 +100,17 @@ const JobLegitimacyCheck = ({
         throw new Error("The AI returned an empty response. Please try again.");
       }
 
-      const rawText: string =
-        typeof response.message.content === "string"
-          ? response.message.content
-          : response.message.content[0].text;
+      const content = response.message?.content;
 
+      const rawText: string =
+        typeof content === "string" ? content : (content?.[0]?.text ?? "");
+
+      if (!rawText) {
+        throw new Error("The AI returned an empty response. Please try again.");
+      }
+
+      // The model is instructed to return raw JSON, but sometimes wraps it
+      // in a markdown code fence anyway — strip that before parsing.
       const cleaned = rawText
         .replace(/^```json\s*/i, "")
         .replace(/```\s*$/i, "")
@@ -208,7 +221,6 @@ const JobLegitimacyCheck = ({
         </div>
       )}
 
-      {/* Manual verification links — always shown */}
       <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
         <p className="text-xs text-gray-400 font-medium">
           Verify the company yourself
@@ -231,6 +243,15 @@ const JobLegitimacyCheck = ({
             className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#0A66C2] text-white hover:opacity-90"
           >
             LinkedIn
+          </a>
+
+          <a
+            href={buildCompanyIndeedUrl(companyName)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium px-3 py-1.5 rounded-full bg-[#003A9B] text-white hover:opacity-90"
+          >
+            Indeed
           </a>
 
           <a

@@ -9,11 +9,15 @@ import {
 
 const RATE_LIMIT_MAX = 5; // max job searches per user per day
 
+// Keying by date means the count resets naturally each day without any
+// cleanup — yesterday's key just stops getting read or written to.
 const getRateLimitKey = () => {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toISOString().slice(0, 10);
   return `job-search-usage:${today}`;
 };
 
+// Adzuna returns raw salary numbers (e.g. 65000) — round to the nearest
+// thousand and format as "$65k" for a more compact display.
 const formatSalary = (min?: number, max?: number) => {
   if (!min && !max) return null;
 
@@ -54,6 +58,8 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
   const runSearch = async () => {
     if (!selectedTitle) return;
 
+    // Re-check against kv directly rather than trusting local state, in case
+    // the count changed in another tab/session since this component mounted.
     const raw = await kv.get(getRateLimitKey());
     const count = raw ? parseInt(raw, 10) : 0;
 
@@ -94,6 +100,7 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
     loadUsage();
   };
 
+  // Nothing to search for without at least one suggested title.
   if (!titles || titles.length === 0) return null;
 
   const remaining = Math.max(RATE_LIMIT_MAX - searchesUsed, 0);
@@ -136,7 +143,6 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
 
       {started && (
         <>
-          {/* Search controls */}
           <div className="flex flex-col sm:flex-row gap-3">
             <select
               value={selectedTitle}
@@ -169,14 +175,12 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
             </button>
           </div>
 
-          {/* Error */}
           {error && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-3">
               {error}
             </p>
           )}
 
-          {/* No results */}
           {hasSearched && !loading && !error && jobs.length === 0 && (
             <p className="text-sm text-gray-400">
               No postings found for this search. Try a different title or
@@ -184,7 +188,6 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
             </p>
           )}
 
-          {/* Results */}
           <div className="flex flex-col gap-3">
             {jobs.map((job) => (
               <a
@@ -211,7 +214,6 @@ const JobPostings = ({ titles }: { titles: string[] }) => {
             ))}
           </div>
 
-          {/* Cross-links to other boards */}
           <div className="border-t border-gray-100 pt-4 flex flex-col gap-2">
             <p className="text-xs text-gray-400 font-medium">
               Also try searching on

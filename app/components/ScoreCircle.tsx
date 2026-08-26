@@ -14,7 +14,6 @@ const ScoreCircle = ({ score = 75 }: { score: number }) => {
         viewBox="0 0 100 100"
         className="transform -rotate-90"
       >
-        {/* Background circle */}
         <circle
           cx="50"
           cy="50"
@@ -23,16 +22,14 @@ const ScoreCircle = ({ score = 75 }: { score: number }) => {
           strokeWidth={stroke}
           fill="transparent"
         />
-        {/* Partial circle with gradient */}
         <defs>
+          {/* Gradient runs green -> yellow -> red. The SVG is rotated -90deg
+              and drawn from x1="1" (right) to x2="0" (left), so the stop
+              order here is reversed from how it reads visually once filled. */}
           <linearGradient id="grad" x1="1" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#10b981" />
             <stop offset="50%" stopColor="#f59e0b" />
             <stop offset="100%" stopColor="#ef4444" />
-            {/* 
-            <stop offset="0%" stopColor="#FF97AD" />
-            <stop offset="100%" stopColor="#5171FF" />
-            */}
           </linearGradient>
         </defs>
         <circle
@@ -48,7 +45,6 @@ const ScoreCircle = ({ score = 75 }: { score: number }) => {
         />
       </svg>
 
-      {/* Score and issues */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="font-semibold text-sm">{`${score}/100`}</span>
       </div>

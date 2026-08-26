@@ -55,6 +55,10 @@ const Resume = () => {
     loadResume();
   }, [id]);
 
+  // Badges depend on feedback being loaded, so tabs are built here rather
+  // than as a static constant. Overview gets a dot when the score is low
+  // enough to warrant attention; Job Search shows a count of how many
+  // suggested titles are available (0 on older resumes without that field).
   const tabs = feedback
     ? [
         {
@@ -95,7 +99,6 @@ const Resume = () => {
                 onChange={setActiveTab}
               />
 
-              {/* ── Overview tab ─────────────────────────────────────────── */}
               {activeTab === "overview" && (
                 <div className="flex flex-col gap-8">
                   <Summary feedback={feedback} />
@@ -107,13 +110,13 @@ const Resume = () => {
                 </div>
               )}
 
-              {/* ── Improve My Resume tab ────────────────────────────────── */}
               {activeTab === "improve" && (
                 <div className="flex flex-col gap-6">
                   {!isRevision && (
                     <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 shadow-md p-6 flex flex-col gap-4">
                       <div className="flex flex-row gap-3 items-center">
                         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
+                          {/* Sparkle icon (Heroicons) */}
                           <svg
                             className="w-5 h-5 text-white"
                             fill="none"
@@ -169,6 +172,7 @@ const Resume = () => {
                   <div className="rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 border border-green-100 shadow-md p-6 flex flex-col gap-4">
                     <div className="flex flex-row gap-3 items-center">
                       <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center flex-shrink-0">
+                        {/* Pencil/edit icon (Heroicons) */}
                         <svg
                           className="w-5 h-5 text-white"
                           fill="none"
@@ -204,6 +208,7 @@ const Resume = () => {
                   <div className="rounded-2xl bg-gradient-to-br from-pink-50 to-indigo-50 border border-pink-100 shadow-md p-6 flex flex-col gap-4">
                     <div className="flex flex-row gap-3 items-center">
                       <div className="w-10 h-10 rounded-xl bg-pink-500 flex items-center justify-center flex-shrink-0">
+                        {/* Briefcase icon (Heroicons) */}
                         <svg
                           className="w-5 h-5 text-white"
                           fill="none"
@@ -238,7 +243,6 @@ const Resume = () => {
                 </div>
               )}
 
-              {/* ── Job Search tab ───────────────────────────────────────── */}
               {activeTab === "jobsearch" && (
                 <div className="flex flex-col gap-6">
                   <JobTitleSuggestions

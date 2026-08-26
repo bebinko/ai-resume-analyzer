@@ -7,6 +7,8 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close the dropdown on any click outside of it, since there's no overlay
+  // to catch outside clicks the way a modal would.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -20,6 +22,8 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Puter's auth has no "switch user" call directly — sign out then
+  // immediately trigger sign-in again, which prompts Puter's account picker.
   const handleSwitchAccount = async () => {
     setOpen(false);
     await auth.signOut();
@@ -68,6 +72,7 @@ const Navbar = () => {
                   onClick={() => setOpen(false)}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
+                  {/* Settings gear icon (Heroicons) */}
                   <svg
                     className="w-4 h-4 text-gray-400"
                     fill="none"
@@ -93,6 +98,7 @@ const Navbar = () => {
                   onClick={handleSwitchAccount}
                   className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 cursor-pointer"
                 >
+                  {/* Switch-account arrows icon (Heroicons) */}
                   <svg
                     className="w-4 h-4 text-gray-400"
                     fill="none"
@@ -113,6 +119,7 @@ const Navbar = () => {
                   onClick={handleSignOut}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                 >
+                  {/* Sign-out icon (Heroicons) */}
                   <svg
                     className="w-4 h-4"
                     fill="none"

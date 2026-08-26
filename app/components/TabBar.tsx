@@ -26,6 +26,8 @@ const TabBar = ({
           }`}
         >
           {tab.label}
+          {/* "dot" is a plain alert indicator with no count (e.g. low score
+              warning); a number shows an actual count (e.g. items available) */}
           {tab.badge === "dot" && (
             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
           )}

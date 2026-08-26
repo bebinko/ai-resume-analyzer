@@ -3,6 +3,8 @@ import ScoreCircle from "./ScoreCircle";
 import { useEffect, useState } from "react";
 import { usePuterStore } from "~/lib/puter";
 
+// Same score thresholds used across the app (ScoreBadge, ATS, etc.):
+// green above 70, yellow 40-69, red below 40.
 const scoreAccentColor = (score: number) => {
   if (score > 69) return "linear-gradient(to right, #34d399, #10b981)"; // green
   if (score > 39) return "linear-gradient(to right, #fbbf24, #f59e0b)"; // yellow
@@ -28,6 +30,8 @@ const ResumeCard = ({
     };
     loadResume();
 
+    // Object URLs aren't garbage collected automatically — revoke on
+    // unmount/re-fetch or they'll leak memory as the user browses resumes.
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };

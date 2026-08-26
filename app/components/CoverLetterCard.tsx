@@ -29,6 +29,9 @@ const CoverLetterCard = ({
   onDownloadPdf,
   onDownloadDocx,
 }: CoverLetterCardProps) => {
+  // Name/contact inputs are only required when this card is used standalone
+  // (cover-letter-only mode). If we already have a full resume revision,
+  // that name/contact info is reused instead of asking again.
   const canGenerate =
     hasRevisedData || (candidateName.trim() && candidateContact.trim());
 
@@ -36,6 +39,7 @@ const CoverLetterCard = ({
     <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-pink-50 border border-indigo-100 shadow-md p-6 flex flex-col gap-4">
       <div className="flex flex-row gap-3 items-center">
         <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center flex-shrink-0">
+          {/* Briefcase icon path from Heroicons (heroicons.com) */}
           <svg
             className="w-5 h-5 text-white"
             fill="none"
@@ -66,6 +70,7 @@ const CoverLetterCard = ({
             download as a PDF or Word document.
           </p>
 
+          {/* Only show name/contact fields in standalone mode — see canGenerate above */}
           {!hasRevisedData && (
             <div className="flex flex-col gap-3 max-w-sm">
               <div className="form-div">
@@ -110,6 +115,7 @@ const CoverLetterCard = ({
         </>
       )}
 
+      {/* Once generated, show the letter preview and download options instead of the form */}
       {coverLetterData && (
         <div className="flex flex-col gap-4">
           <div className="bg-white rounded-xl p-6 flex flex-col gap-4 text-sm text-gray-700 leading-relaxed max-h-96 overflow-y-auto">

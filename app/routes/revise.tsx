@@ -37,6 +37,10 @@ const coverLetterOnlySteps = [
   { id: "ready", label: "Ready to generate" },
 ];
 
+// This route serves two modes from one component: a full resume revision
+// (default), or a cover-letter-only flow reached via ?mode=cover-letter
+// from the review page's "Just Need a Cover Letter?" CTA. The mode changes
+// which steps run, which UI sections render, and what "done" means.
 const Revise = () => {
   const { auth, isLoading, fs, ai, kv } = usePuterStore();
   const { id } = useParams();
@@ -69,6 +73,8 @@ const Revise = () => {
   const [candidateName, setCandidateName] = useState("");
   const [candidateContact, setCandidateContact] = useState("");
 
+  // Prevents the fetch effect below from firing twice (e.g. React strict
+  // mode double-invoke in dev, or auth state settling after a re-render).
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -87,6 +93,8 @@ const Revise = () => {
     }
   }, [isLoading, auth.isAuthenticated]);
 
+  // Cover-letter-only mode just needs the stored resume data — no AI call,
+  // no PDF rebuild, since the resume itself isn't being changed.
   const loadResumeOnly = async () => {
     try {
       setCurrentStep(0);
@@ -122,6 +130,8 @@ const Revise = () => {
         data.jobDescription,
       );
 
+      // Puter's free-tier AI can hang indefinitely under load, so race it
+      // against a timeout rather than leaving the user stuck on this step.
       const AI_TIMEOUT_MS = 60_000;
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
@@ -142,6 +152,8 @@ const Revise = () => {
           timeoutPromise,
         ]);
       } catch (aiErr: any) {
+        // Rewrite known failure types into clearer messages; anything else
+        // gets re-thrown as-is to the outer catch below.
         const msg: string = aiErr?.message ?? "";
         if (
           msg.toLowerCase().includes("rate") ||
@@ -181,6 +193,8 @@ const Revise = () => {
         );
       }
 
+      // The model is instructed to return raw JSON but sometimes wraps it
+      // in a markdown code fence anyway — strip that before parsing.
       const cleaned = rawText
         .replace(/^```json\s*/i, "")
         .replace(/```\s*$/i, "")
@@ -213,6 +227,8 @@ const Revise = () => {
       }
 
       setCurrentStep(4);
+      // Storage failure is non-fatal — the user still gets their preview and
+      // download either way, they just won't see a "saved" confirmation.
       try {
         const uploadedRevisedResume = await fs.upload([pdfFile]);
         if (!uploadedRevisedResume)
@@ -298,6 +314,9 @@ const Revise = () => {
       const coverLetter: CoverLetterData = JSON.parse(cleaned);
       setCoverLetterData(coverLetter);
 
+      // If a full revision already ran, reuse the name/contact info Claude
+      // extracted from the resume; otherwise fall back to what the user
+      // typed into the cover-letter-only form.
       const nameForLetter = revisedData?.name || candidateName;
       const contactForLetter = revisedData?.contactLine || candidateContact;
 
@@ -354,6 +373,9 @@ const Revise = () => {
     URL.revokeObjectURL(url);
   };
 
+  // "Done" means something different per mode: for a full revision it's the
+  // last numbered step (5); for cover-letter-only it's just having loaded
+  // the resume data (step 1), since there's nothing else to build first.
   const isDone = coverLetterOnly
     ? currentStep === 1 && !error
     : currentStep === 5 && !error;
@@ -383,6 +405,7 @@ const Revise = () => {
           <div className="rounded-2xl bg-red-50 border border-red-200 p-6 flex flex-col gap-4 max-w-xl mx-auto">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                {/* Warning triangle icon (Heroicons) */}
                 <svg
                   className="w-4 h-4 text-red-600"
                   fill="none"

@@ -1,7 +1,8 @@
 import type { RevisedResume, CoverLetterData } from "./documentTypes";
 
-// ─── Resume PDF builder (pdf-lib) ─────────────────────────────────────────────
-
+// Builds the AI-revised resume as a PDF using pdf-lib's low-level drawing
+// API — there's no page-flow layout engine here, so this manually tracks a
+// y-coordinate cursor and wraps/paginates text by hand.
 export async function buildPdf(revised: RevisedResume): Promise<Blob> {
   const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
 
@@ -21,17 +22,20 @@ export async function buildPdf(revised: RevisedResume): Promise<Blob> {
   const cAccent = rgb(0.25, 0.32, 0.71);
 
   let page = doc.addPage([PAGE_W, PAGE_H]);
-  let y = PAGE_H - MARGIN;
+  let y = PAGE_H - MARGIN; // cursor tracking current vertical draw position
 
   const newPage = () => {
     page = doc.addPage([PAGE_W, PAGE_H]);
     y = PAGE_H - MARGIN;
   };
 
+  // Starts a new page if the next block won't fit above the bottom margin
   const checkY = (needed: number) => {
     if (y - needed < MARGIN) newPage();
   };
 
+  // Greedy word wrap: keeps adding words to the current line until it no
+  // longer fits the given width, then starts a new line.
   const wrapText = (
     text: string,
     font: typeof fontRegular,
@@ -114,6 +118,9 @@ export async function buildPdf(revised: RevisedResume): Promise<Blob> {
       gap: 5,
     });
 
+    // Section content is one string with embedded newlines from the AI
+    // response — split into lines and classify each as a bullet, a
+    // job/entry header, or plain text based on its leading character.
     const lines = section.content.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
@@ -145,6 +152,9 @@ export async function buildPdf(revised: RevisedResume): Promise<Blob> {
           y -= LINE_H;
         }
       } else {
+        // A line containing a pipe or dash-like separator (e.g.
+        // "Company — Title | Dates") is treated as an entry header and
+        // bolded; everything else is regular body text.
         const isSectionHead = /[|—–]/.test(trimmed);
         drawText(trimmed, {
           font: isSectionHead ? fontBold : fontRegular,
@@ -163,8 +173,9 @@ export async function buildPdf(revised: RevisedResume): Promise<Blob> {
   });
 }
 
-// ─── Cover letter PDF builder (pdf-lib) ───────────────────────────────────────
-
+// Builds the generated cover letter as a PDF — simpler than buildPdf above
+// since a cover letter is just a header, date, and paragraphs with no
+// bullets or multi-section structure to parse.
 export async function buildCoverLetterPdf(
   coverLetter: CoverLetterData,
   candidateName: string,
@@ -285,8 +296,9 @@ export async function buildCoverLetterPdf(
   });
 }
 
-// ─── Cover letter Word doc builder (docx) ─────────────────────────────────────
-
+// Builds the cover letter as a Word document using the docx package's
+// paragraph API — much simpler than the PDF version since docx handles
+// its own text wrapping and pagination automatically.
 export async function buildCoverLetterDocx(
   coverLetter: CoverLetterData,
   candidateName: string,
@@ -333,6 +345,9 @@ export async function buildCoverLetterDocx(
   return await Packer.toBlob(doc);
 }
 
+// Word doc equivalent of buildPdf — same bullet/heading detection logic,
+// but built as a flat array of docx Paragraphs since the library handles
+// layout instead of manual coordinate tracking.
 export async function buildResumeDocx(revised: RevisedResume): Promise<Blob> {
   const { Document, Packer, Paragraph, TextRun } = await import("docx");
 

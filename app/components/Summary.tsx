@@ -2,6 +2,8 @@ import ScoreBadge from "./ScoreBadge";
 import ScoreGauge from "./ScoreGauge";
 
 const Category = ({ title, score }: { title: string; score: number }) => {
+  // Same three-tier color scale used throughout the app: green above 70,
+  // yellow 50-70, red below 50.
   const textColor =
     score > 70
       ? "text-green-600"
