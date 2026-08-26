@@ -20,6 +20,11 @@ const Resume = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [resumeUrl, setResumeUrl] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  // Distinguishes "still fetching the KV record" from "fetched it, and
+  // feedback is genuinely empty/never completed" — without this, both
+  // states render the same infinite loading gif.
+  const [hasLoadedRecord, setHasLoadedRecord] = useState(false);
+  const [recordMissing, setRecordMissing] = useState(false);
   const [isRevision, setIsRevision] = useState(false);
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -34,23 +39,51 @@ const Resume = () => {
 
   useEffect(() => {
     const loadResume = async () => {
+      setHasLoadedRecord(false);
+      setRecordMissing(false);
+
       const resume = await kv.get(`resume:${id}`);
-      if (!resume) return;
+      if (!resume) {
+        setRecordMissing(true);
+        setHasLoadedRecord(true);
+        return;
+      }
+
       const data = JSON.parse(resume);
-      const resumeBlob = await fs.read(data.resumePath);
-      if (!resumeBlob) return;
-      const pdfBlob = new Blob([resumeBlob], { type: "application/pdf" });
-      const resumeUrl = URL.createObjectURL(pdfBlob);
-      setResumeUrl(resumeUrl);
-      const imageBlob = await fs.read(data.imagePath);
-      if (!imageBlob) return;
-      const imageUrl = URL.createObjectURL(imageBlob);
-      setImageUrl(imageUrl);
-      setFeedback(data.feedback);
+
+      // PDF preview — best effort, never blocks feedback from showing.
+      try {
+        const resumeBlob = await fs.read(data.resumePath);
+        if (resumeBlob) {
+          const pdfBlob = new Blob([resumeBlob], { type: "application/pdf" });
+          setResumeUrl(URL.createObjectURL(pdfBlob));
+        }
+      } catch (err) {
+        console.error("Failed to load resume PDF:", err);
+      }
+
+      // Thumbnail image — also best effort. imagePath may still be empty
+      // if the background preview-generation step in Upload hasn't
+      // finished yet or failed; that's fine, it's cosmetic only.
+      if (data.imagePath) {
+        try {
+          const imageBlob = await fs.read(data.imagePath);
+          if (imageBlob) setImageUrl(URL.createObjectURL(imageBlob));
+        } catch (err) {
+          console.error("Failed to load preview image:", err);
+        }
+      }
+
+      // The important part — set this regardless of whether the PDF/image
+      // preview loaded successfully. If the AI call never completed (e.g.
+      // the upload tab was closed mid-analysis), data.feedback will still
+      // be "" here, and the fallback UI below handles that case.
+      setFeedback(data.feedback || null);
       setIsRevision(Boolean(data.isRevision));
       setCompanyName(data.companyName || "");
       setJobTitle(data.jobTitle || "");
       setJobDescription(data.jobDescription || "");
+      setHasLoadedRecord(true);
     };
     loadResume();
   }, [id]);
@@ -256,6 +289,40 @@ const Resume = () => {
                   />
                 </div>
               )}
+            </div>
+          ) : hasLoadedRecord && recordMissing ? (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <p className="text-lg font-semibold text-gray-800">
+                Resume not found.
+              </p>
+              <p className="text-sm text-gray-500 max-w-sm">
+                This resume may have already been deleted, or the link is
+                incorrect.
+              </p>
+              <Link to="/" className="primary-button w-fit">
+                Back to Homepage
+              </Link>
+            </div>
+          ) : hasLoadedRecord && !feedback ? (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <p className="text-lg font-semibold text-gray-800">
+                This analysis never finished.
+              </p>
+              <p className="text-sm text-gray-500 max-w-sm">
+                It looks like the page was closed before the AI response came
+                back. You'll need to delete this and re-upload your resume.
+              </p>
+              <div className="flex gap-3">
+                <Link to="/settings" className="primary-button w-fit">
+                  Go to Settings to delete it
+                </Link>
+                <Link
+                  to="/upload"
+                  className="text-sm font-medium px-4 py-2 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                >
+                  Upload again
+                </Link>
+              </div>
             </div>
           ) : (
             <img src="/images/resume-scan-2.gif" className="w-full" />

@@ -17,9 +17,9 @@ export const meta = () => [
 
 // Character limits — keeps prompt size (and token cost) predictable
 const LIMITS = {
-  companyName: 100,
-  jobTitle: 100,
-  jobDescription: 2000,
+  companyName: 50,
+  jobTitle: 50,
+  jobDescription: 4000,
 };
 
 const Upload = () => {
@@ -28,6 +28,8 @@ const Upload = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const [companyName, setCompanyName] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -35,6 +37,39 @@ const Upload = () => {
 
   const handleFileSelect = (file: File | null) => {
     setFile(file);
+  };
+
+  const runWithProgress = <T,>(
+    promise: Promise<T>,
+    { from, to, label }: { from: number; to: number; label: string },
+  ): Promise<T> => {
+    setProgress(from);
+    setStatusText(label);
+    const startedAt = Date.now();
+
+    const tick = setInterval(() => {
+      setElapsedSeconds(Math.round((Date.now() - startedAt) / 1000));
+      setProgress((p) => {
+        const remaining = to - p;
+        // slow asymptotic creep — fast at first, crawls as it nears `to`
+        return p + remaining * 0.03;
+      });
+    }, 300);
+
+    return promise.finally(() => clearInterval(tick));
+  };
+
+  const withTimeout = <T,>(
+    promise: Promise<T>,
+    ms: number,
+    message: string,
+  ): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(message)), ms),
+      ),
+    ]);
   };
 
   const handleAnalyze = async ({
@@ -49,55 +84,88 @@ const Upload = () => {
     file: File;
   }) => {
     setIsProcessing(true);
+    setProgress(0);
+    setElapsedSeconds(0);
 
-    setStatusText("Uploading the file...");
-    const uploadedFile = await fs.upload([file]);
-    if (!uploadedFile) return setStatusText("Error: Failed to upload file");
+    try {
+      const uploadedFile = await runWithProgress(fs.upload([file]), {
+        from: 0,
+        to: 15,
+        label: "Uploading the file...",
+      });
+      if (!uploadedFile) {
+        setStatusText("Error: Failed to upload file");
+        return;
+      }
 
-    // The AI model reads the resume as an image attachment, not the raw
-    // PDF, so a rendered page image is generated and uploaded separately.
-    setStatusText("Converting to image...");
-    const imageFile = await convertPdfToImage(file);
-    if (!imageFile.file)
-      return setStatusText("Error: Failed to convert PDF to image");
+      setProgress(15);
+      const uuid = generateUUID();
+      const data = {
+        id: uuid,
+        resumePath: uploadedFile.path,
+        imagePath: "",
+        companyName,
+        jobTitle,
+        jobDescription,
+        feedback: "",
+      };
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
 
-    setStatusText("Uploading the image...");
-    const uploadedImage = await fs.upload([imageFile.file]);
-    if (!uploadedImage) return setStatusText("Error: Failed to upload image");
+      convertPdfToImage(file)
+        .then(async (imageFile) => {
+          if (!imageFile.file) return;
+          const uploadedImage = await fs.upload([imageFile.file]);
+          if (!uploadedImage) return;
+          data.imagePath = uploadedImage.path;
+          await kv.set(`resume:${uuid}`, JSON.stringify(data));
+        })
+        .catch((err) => console.error("Preview image generation failed:", err));
 
-    setStatusText("Preparing data...");
-    const uuid = generateUUID();
-    const data = {
-      id: uuid,
-      resumePath: uploadedFile.path,
-      imagePath: uploadedImage.path,
-      companyName,
-      jobTitle,
-      jobDescription,
-      feedback: "",
-    };
-    // Written once here with an empty feedback field so the record exists
-    // (and is visible on the dashboard) even if the AI call below fails,
-    // then overwritten below once feedback actually comes back.
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
+      // The AI call is the long pole — 90s cap, progress creeps 20% -> 90%
+      const feedback = await runWithProgress(
+        withTimeout(
+          ai.feedback(
+            uploadedFile.path,
+            prepareInstructions({ jobTitle, jobDescription }),
+          ),
+          90000,
+          "Analysis timed out. The AI service may be slow right now — try again.",
+        ),
+        { from: 20, to: 90, label: "Analyzing..." },
+      );
+      if (!feedback) {
+        setStatusText("Error: Failed to analyze resume");
+        return;
+      }
 
-    setStatusText("Analyzing...");
+      const feedbackText =
+        typeof feedback.message.content === "string"
+          ? feedback.message.content
+          : feedback.message.content[0].text;
+      const cleaned = feedbackText.replace(/^```json\s*|```$/g, "").trim();
 
-    const feedback = await ai.feedback(
-      uploadedFile.path,
-      prepareInstructions({ jobTitle, jobDescription }),
-    );
-    if (!feedback) return setStatusText("Error: Failed to analyze resume");
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        console.error("Failed to parse AI feedback JSON:", feedbackText);
+        setStatusText("Error: Received an invalid response. Please try again.");
+        return;
+      }
 
-    const feedbackText =
-      typeof feedback.message.content === "string"
-        ? feedback.message.content
-        : feedback.message.content[0].text;
-
-    data.feedback = JSON.parse(feedbackText);
-    await kv.set(`resume:${uuid}`, JSON.stringify(data));
-    setStatusText("Analysis complete, redirecting...");
-    navigate(`/resume/${uuid}`);
+      setProgress(100);
+      data.feedback = parsed;
+      await kv.set(`resume:${uuid}`, JSON.stringify(data));
+      setStatusText("Analysis complete, redirecting...");
+      navigate(`/resume/${uuid}`);
+    } catch (err) {
+      console.error("Resume analysis failed:", err);
+      setStatusText(
+        `Error: ${err instanceof Error ? err.message : "Something went wrong."}`,
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
@@ -120,6 +188,15 @@ const Upload = () => {
           {isProcessing ? (
             <>
               <h2>{statusText}</h2>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
+                <div
+                  className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                {Math.round(progress)}% • {elapsedSeconds}s elapsed
+              </p>
               <img src="/images/resume-scan.gif" className="w-full" />
             </>
           ) : (

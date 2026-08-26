@@ -34,7 +34,7 @@ declare global {
       kv: {
         get: (key: string) => Promise<string | null>;
         set: (key: string, value: string) => Promise<boolean>;
-        delete: (key: string) => Promise<boolean>;
+        del: (key: string) => Promise<boolean>;
         list: (pattern: string, returnValues?: boolean) => Promise<string[]>;
         flush: () => Promise<boolean>;
       };
@@ -98,6 +98,32 @@ interface PuterStore {
 
 const getPuter = (): typeof window.puter | null =>
   typeof window !== "undefined" && window.puter ? window.puter : null;
+
+// Small helper: wait `ms` milliseconds before resolving.
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Models to try, in order, when analyzing a resume. If the first one fails
+// with a transient/provider-side error, we retry it a couple of times with
+// a short backoff, then fall back to the next model in the list rather
+// than surfacing the error immediately. This absorbs single-route hiccups
+// like an upstream_provider_unavailable / 500 from one OpenRouter route
+// without requiring the user to manually resubmit the form.
+const FEEDBACK_MODEL_FALLBACKS = ["claude-sonnet-4", "claude-sonnet-4.5"];
+
+// Errors worth retrying/falling back on: transient provider-side failures.
+// Things like invalid input, auth errors, or bad JSON aren't included here
+// since retrying won't fix them and would just waste time/credits.
+const isRetryableFeedbackError = (err: any): boolean => {
+  const code = err?.code || err?.error?.code;
+  const status = err?.status || err?.error?.status;
+  return (
+    code === "upstream_provider_unavailable" ||
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504
+  );
+};
 
 export const usePuterStore = create<PuterStore>((set, get) => {
   const setError = (msg: string) => {
@@ -321,12 +347,17 @@ export const usePuterStore = create<PuterStore>((set, get) => {
       setError("Puter.js not available");
       return;
     }
-    // return puter.ai.chat(prompt, imageURL, testMode, options);
     return puter.ai.chat(prompt, imageURL, testMode, options) as Promise<
       AIResponse | undefined
     >;
   };
 
+  // Analyzes a resume PDF and returns structured feedback. Retries
+  // transient provider-side failures (e.g. upstream_provider_unavailable,
+  // 5xx) a couple of times per model, then falls back to the next model
+  // in FEEDBACK_MODEL_FALLBACKS if retries are exhausted. Non-transient
+  // errors (bad auth, invalid input) are thrown immediately — retrying
+  // those would just waste time and credits.
   const feedback = async (path: string, message: string) => {
     const puter = getPuter();
     if (!puter) {
@@ -334,24 +365,53 @@ export const usePuterStore = create<PuterStore>((set, get) => {
       return;
     }
 
-    return puter.ai.chat(
-      [
-        {
-          role: "user",
-          content: [
-            {
-              type: "file",
-              puter_path: path,
-            },
-            {
-              type: "text",
-              text: message,
-            },
-          ],
-        },
-      ],
-      { model: "claude-sonnet-4" },
-    ) as Promise<AIResponse | undefined>;
+    const RETRIES_PER_MODEL = 2;
+    const BASE_DELAY_MS = 1500;
+
+    let lastError: any = null;
+
+    for (const model of FEEDBACK_MODEL_FALLBACKS) {
+      for (let attempt = 0; attempt <= RETRIES_PER_MODEL; attempt++) {
+        try {
+          return (await puter.ai.chat(
+            [
+              {
+                role: "user",
+                content: [
+                  {
+                    type: "file",
+                    puter_path: path,
+                  },
+                  {
+                    type: "text",
+                    text: message,
+                  },
+                ],
+              },
+            ],
+            { model },
+          )) as AIResponse;
+        } catch (err: any) {
+          lastError = err;
+
+          if (!isRetryableFeedbackError(err)) {
+            // Not a transient failure — no point retrying or falling back.
+            throw err;
+          }
+
+          const isLastAttemptForModel = attempt === RETRIES_PER_MODEL;
+          if (!isLastAttemptForModel) {
+            // Exponential-ish backoff before retrying the same model.
+            await sleep(BASE_DELAY_MS * (attempt + 1));
+          }
+          // Otherwise: fall through to the next model in the outer loop.
+        }
+      }
+    }
+
+    // All models and retries exhausted — surface the last error so the
+    // caller's catch block can show a real message instead of hanging.
+    throw lastError;
   };
 
   const img2txt = async (image: string | File | Blob, testMode?: boolean) => {
@@ -387,7 +447,7 @@ export const usePuterStore = create<PuterStore>((set, get) => {
       setError("Puter.js not available");
       return;
     }
-    return puter.kv.delete(key);
+    return puter.kv.del(key);
   };
 
   const listKV = async (pattern: string, returnValues?: boolean) => {
