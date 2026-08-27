@@ -195,6 +195,7 @@ const CustomRevise = () => {
           id: newId,
           companyName: resumeData.companyName,
           jobTitle: resumeData.jobTitle,
+          jobDescription: resumeData.jobDescription,
           imagePath: uploadedImagePath ?? resumeData.imagePath,
           resumePath: uploadedResume.path,
           feedback: resumeData.feedback,

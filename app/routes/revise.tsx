@@ -246,6 +246,7 @@ const Revise = () => {
           id: newId,
           companyName: data.companyName,
           jobTitle: data.jobTitle,
+          jobDescription: data.jobDescription,
           imagePath: uploadedRevisedImagePath ?? data.imagePath,
           resumePath: uploadedRevisedResume.path,
           feedback: data.feedback,

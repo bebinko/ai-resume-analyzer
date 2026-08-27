@@ -8,6 +8,7 @@ import JobPostings from "~/components/JobPostings";
 import TabBar from "~/components/TabBar";
 import { usePuterStore } from "~/lib/puter";
 import JobLegitimacyCheck from "~/components/JobLegitimacyCheck";
+import { prepareInstructions } from "../../constants";
 
 export const meta = () => [
   { title: "Breezume | Review" },
@@ -15,14 +16,11 @@ export const meta = () => [
 ];
 
 const Resume = () => {
-  const { auth, isLoading, fs, kv } = usePuterStore();
+  const { auth, isLoading, fs, kv, ai } = usePuterStore();
   const { id } = useParams();
   const [imageUrl, setImageUrl] = useState("");
   const [resumeUrl, setResumeUrl] = useState("");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
-  // Distinguishes "still fetching the KV record" from "fetched it, and
-  // feedback is genuinely empty/never completed" — without this, both
-  // states render the same infinite loading gif.
   const [hasLoadedRecord, setHasLoadedRecord] = useState(false);
   const [recordMissing, setRecordMissing] = useState(false);
   const [isRevision, setIsRevision] = useState(false);
@@ -30,6 +28,14 @@ const Resume = () => {
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [hasBeenRegraded, setHasBeenRegraded] = useState(false);
+
+  // Regrading a revised resume — re-runs the same analysis prompt against
+  // this resume's own stored job info (or a general analysis if that info
+  // wasn't carried over from an older revision made before this feature).
+  const [isRegrading, setIsRegrading] = useState(false);
+  const [regradeError, setRegradeError] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,7 +57,6 @@ const Resume = () => {
 
       const data = JSON.parse(resume);
 
-      // PDF preview — best effort, never blocks feedback from showing.
       try {
         const resumeBlob = await fs.read(data.resumePath);
         if (resumeBlob) {
@@ -62,9 +67,6 @@ const Resume = () => {
         console.error("Failed to load resume PDF:", err);
       }
 
-      // Thumbnail image — also best effort. imagePath may still be empty
-      // if the background preview-generation step in Upload hasn't
-      // finished yet or failed; that's fine, it's cosmetic only.
       if (data.imagePath) {
         try {
           const imageBlob = await fs.read(data.imagePath);
@@ -74,24 +76,68 @@ const Resume = () => {
         }
       }
 
-      // The important part — set this regardless of whether the PDF/image
-      // preview loaded successfully. If the AI call never completed (e.g.
-      // the upload tab was closed mid-analysis), data.feedback will still
-      // be "" here, and the fallback UI below handles that case.
       setFeedback(data.feedback || null);
       setIsRevision(Boolean(data.isRevision));
       setCompanyName(data.companyName || "");
       setJobTitle(data.jobTitle || "");
       setJobDescription(data.jobDescription || "");
       setHasLoadedRecord(true);
+      setHasBeenRegraded(Boolean(data.hasBeenRegraded));
     };
     loadResume();
   }, [id]);
 
-  // Badges depend on feedback being loaded, so tabs are built here rather
-  // than as a static constant. Overview gets a dot when the score is low
-  // enough to warrant attention; Job Search shows a count of how many
-  // suggested titles are available (0 on older resumes without that field).
+  const handleRegrade = async () => {
+    setIsRegrading(true);
+    setRegradeError(null);
+
+    try {
+      const raw = await kv.get(`resume:${id}`);
+      if (!raw)
+        throw new Error("Resume not found. Please go back and try again.");
+      const data = JSON.parse(raw);
+
+      const result = await ai.feedback(
+        data.resumePath,
+        prepareInstructions({
+          jobTitle: data.jobTitle || "",
+          jobDescription: data.jobDescription || "",
+        }),
+      );
+
+      if (!result)
+        throw new Error("The AI returned an empty response. Please try again.");
+
+      const rawText: string =
+        typeof result.message.content === "string"
+          ? result.message.content
+          : result.message.content[0].text;
+
+      const cleaned = rawText.replace(/^```json\s*|```$/g, "").trim();
+
+      let parsed: Feedback;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        throw new Error("Received an invalid response. Please try again.");
+      }
+
+      data.feedback = parsed;
+      data.hasBeenRegraded = true;
+      await kv.set(`resume:${id}`, JSON.stringify(data));
+      setFeedback(parsed);
+      setHasBeenRegraded(true);
+    } catch (err) {
+      setRegradeError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong regrading this resume.",
+      );
+    } finally {
+      setIsRegrading(false);
+    }
+  };
+
   const tabs = feedback
     ? [
         {
@@ -134,6 +180,28 @@ const Resume = () => {
 
               {activeTab === "overview" && (
                 <div className="flex flex-col gap-8">
+                  {isRevision && !hasBeenRegraded && (
+                    <div className="rounded-2xl bg-indigo-50 border border-indigo-100 p-4 flex flex-row items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <p className="text-sm font-semibold text-indigo-900">
+                          This score reflects the resume before revisions.
+                        </p>
+                        <p className="text-xs text-indigo-700 mt-0.5">
+                          Regrade to see how the changes affected your score.
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleRegrade}
+                        disabled={isRegrading}
+                        className="text-sm font-medium px-4 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-700 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                      >
+                        {isRegrading ? "Regrading..." : "Regrade This Resume"}
+                      </button>
+                    </div>
+                  )}
+                  {regradeError && (
+                    <p className="text-sm text-red-600 -mt-4">{regradeError}</p>
+                  )}
                   <Summary feedback={feedback} />
                   <ATS
                     score={feedback.ATS.score || 0}

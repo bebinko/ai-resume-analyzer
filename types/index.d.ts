@@ -9,11 +9,13 @@ interface Resume {
   id: string;
   companyName?: string;
   jobTitle?: string;
+  jobDescription?: string;
   imagePath: string;
   resumePath: string;
   feedback: Feedback;
   isRevision?: boolean;
   originalResumeId?: string;
+  hasBeenRegraded?: boolean;
 }
 
 interface Feedback {
