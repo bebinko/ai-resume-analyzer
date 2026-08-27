@@ -10,6 +10,7 @@ interface CoverLetterCardProps {
   displayName: string;
   isGenerating: boolean;
   error: string | null;
+  isSaved: boolean;
   onGenerate: () => void;
   onDownloadPdf: () => void;
   onDownloadDocx: () => void;
@@ -25,6 +26,7 @@ const CoverLetterCard = ({
   displayName,
   isGenerating,
   error,
+  isSaved,
   onGenerate,
   onDownloadPdf,
   onDownloadDocx,
@@ -118,6 +120,12 @@ const CoverLetterCard = ({
       {/* Once generated, show the letter preview and download options instead of the form */}
       {coverLetterData && (
         <div className="flex flex-col gap-4">
+          {isSaved && (
+            <p className="text-sm font-medium text-green-700">
+              Saved to your Cover Letters library.
+            </p>
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="bg-white rounded-xl p-6 flex flex-col gap-4 text-sm text-gray-700 leading-relaxed max-h-96 overflow-y-auto">
             <p>{coverLetterData.greeting}</p>
             {coverLetterData.paragraphs.map((para, i) => (

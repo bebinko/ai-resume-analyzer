@@ -9,6 +9,7 @@ import { generateUUID } from "~/lib/utils";
 import { buildRevisionPrompt, buildCoverLetterPrompt } from "~/lib/prompts";
 import {
   buildPdf,
+  buildResumeDocx,
   buildCoverLetterPdf,
   buildCoverLetterDocx,
 } from "~/lib/documentBuilders";
@@ -57,6 +58,7 @@ const Revise = () => {
   const [revisedData, setRevisedData] = useState<RevisedResume | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [changeLog, setChangeLog] = useState<string[]>([]);
   const [revisedResumeId, setRevisedResumeId] = useState<string | null>(null);
 
@@ -70,6 +72,7 @@ const Revise = () => {
   );
   const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
   const [coverLetterError, setCoverLetterError] = useState<string | null>(null);
+  const [isCoverLetterSaved, setIsCoverLetterSaved] = useState(false);
   const [candidateName, setCandidateName] = useState("");
   const [candidateContact, setCandidateContact] = useState("");
 
@@ -215,6 +218,8 @@ const Revise = () => {
       setCurrentStep(2);
       const blob = await buildPdf(revised);
       setPdfBlob(blob);
+      const resumeDocx = await buildResumeDocx(revised);
+      setDocxBlob(resumeDocx);
 
       setCurrentStep(3);
       const pdfFile = new File([blob], "revised-resume.pdf", {
@@ -234,6 +239,15 @@ const Revise = () => {
         if (!uploadedRevisedResume)
           throw new Error("Failed to upload revised resume PDF.");
 
+        const resumeDocxFile = new File(
+          [resumeDocx],
+          "revised-resume.docx",
+          {
+            type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          },
+        );
+        const uploadedResumeDocx = await fs.upload([resumeDocxFile]);
+
         let uploadedRevisedImagePath: string | null = null;
         if (imgResult.file) {
           const uploadedRevisedImage = await fs.upload([imgResult.file]);
@@ -249,6 +263,7 @@ const Revise = () => {
           jobDescription: data.jobDescription,
           imagePath: uploadedRevisedImagePath ?? data.imagePath,
           resumePath: uploadedRevisedResume.path,
+          docxPath: uploadedResumeDocx?.path,
           feedback: data.feedback,
           isRevision: true,
           originalResumeId: id,
@@ -271,6 +286,7 @@ const Revise = () => {
     if (!resumeData) return;
     setIsGeneratingCoverLetter(true);
     setCoverLetterError(null);
+    setIsCoverLetterSaved(false);
 
     try {
       const prompt = buildCoverLetterPrompt(
@@ -334,6 +350,37 @@ const Revise = () => {
         contactForLetter,
       );
       setCoverLetterDocxBlob(docx);
+
+      const coverLetterId = generateUUID();
+      const pdfFile = new File([pdf], `cover-letter-${coverLetterId}.pdf`, {
+        type: "application/pdf",
+      });
+      const docxFile = new File([docx], `cover-letter-${coverLetterId}.docx`, {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      });
+      const [uploadedPdf, uploadedDocx] = await Promise.all([
+        fs.upload([pdfFile]),
+        fs.upload([docxFile]),
+      ]);
+
+      if (!uploadedPdf || !uploadedDocx) {
+        throw new Error("The cover letter was created but could not be saved.");
+      }
+
+      const record: CoverLetterRecord = {
+        id: coverLetterId,
+        resumeId: id || "",
+        companyName: resumeData.companyName,
+        jobTitle: resumeData.jobTitle,
+        candidateName: nameForLetter,
+        candidateContact: contactForLetter,
+        coverLetter,
+        pdfPath: uploadedPdf.path,
+        docxPath: uploadedDocx.path,
+        createdAt: new Date().toISOString(),
+      };
+      await kv.set(`cover-letter:${coverLetterId}`, JSON.stringify(record));
+      setIsCoverLetterSaved(true);
     } catch (err: any) {
       console.error(err);
       setCoverLetterError(
@@ -350,6 +397,16 @@ const Revise = () => {
     const a = document.createElement("a");
     a.href = url;
     a.download = `revised-resume-${id?.slice(0, 8)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadResumeDocx = () => {
+    if (!docxBlob) return;
+    const url = URL.createObjectURL(docxBlob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `revised-resume-${id?.slice(0, 8)}.docx`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -488,6 +545,12 @@ const Revise = () => {
                       <img src="/icons/check.svg" alt="" className="w-4 h-4" />
                       Download Revised PDF
                     </button>
+                    <button
+                      onClick={handleDownloadResumeDocx}
+                      className="back-button w-fit flex items-center gap-2"
+                    >
+                      Download Revised DOCX
+                    </button>
                   </div>
                 </div>
 
@@ -537,6 +600,12 @@ const Revise = () => {
                     >
                       Download Revised PDF
                     </button>
+                    <button
+                      onClick={handleDownloadResumeDocx}
+                      className="back-button w-full flex items-center justify-center gap-2"
+                    >
+                      Download Revised DOCX
+                    </button>
                   </div>
                 </div>
               </>
@@ -560,6 +629,7 @@ const Revise = () => {
               displayName={revisedData?.name || candidateName || "Your Name"}
               isGenerating={isGeneratingCoverLetter}
               error={coverLetterError}
+              isSaved={isCoverLetterSaved}
               onGenerate={generateCoverLetter}
               onDownloadPdf={handleDownloadCoverLetterPdf}
               onDownloadDocx={handleDownloadCoverLetterDocx}

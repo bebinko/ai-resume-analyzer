@@ -12,10 +12,28 @@ interface Resume {
   jobDescription?: string;
   imagePath: string;
   resumePath: string;
+  docxPath?: string;
   feedback: Feedback;
   isRevision?: boolean;
   originalResumeId?: string;
   hasBeenRegraded?: boolean;
+}
+
+interface CoverLetterRecord {
+  id: string;
+  resumeId: string;
+  companyName?: string;
+  jobTitle?: string;
+  candidateName: string;
+  candidateContact: string;
+  coverLetter: {
+    greeting: string;
+    paragraphs: string[];
+    closing: string;
+  };
+  pdfPath: string;
+  docxPath: string;
+  createdAt: string;
 }
 
 interface Feedback {

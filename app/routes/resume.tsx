@@ -20,6 +20,10 @@ const Resume = () => {
   const { id } = useParams();
   const [imageUrl, setImageUrl] = useState("");
   const [resumeUrl, setResumeUrl] = useState("");
+  const [resumePath, setResumePath] = useState("");
+  const [docxPath, setDocxPath] = useState("");
+  const [downloading, setDownloading] = useState<"pdf" | "docx" | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [hasLoadedRecord, setHasLoadedRecord] = useState(false);
   const [recordMissing, setRecordMissing] = useState(false);
@@ -56,6 +60,8 @@ const Resume = () => {
       }
 
       const data = JSON.parse(resume);
+      setResumePath(data.resumePath || "");
+      setDocxPath(data.docxPath || "");
 
       try {
         const resumeBlob = await fs.read(data.resumePath);
@@ -86,6 +92,29 @@ const Resume = () => {
     };
     loadResume();
   }, [id]);
+
+  const handleDownload = async (format: "pdf" | "docx") => {
+    const path = format === "pdf" ? resumePath : docxPath;
+    if (!path) return;
+    setDownloading(format);
+    setDownloadError(null);
+    try {
+      const blob = await fs.read(path);
+      if (!blob) throw new Error("The saved file could not be found.");
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${isRevision ? "revised-" : ""}resume-${id?.slice(0, 8)}.${format}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(
+        err instanceof Error ? err.message : "The download failed.",
+      );
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   const handleRegrade = async () => {
     setIsRegrading(true);
@@ -166,9 +195,33 @@ const Resume = () => {
       </nav>
       <div className="flex flex-row w-full max-lg:flex-col-reverse">
         <section className="feedback-section">
-          <h2 className="text-4xl text-black font-bold">
-            {isRevision ? "AI-Revised Resume" : "Resume Review"}
-          </h2>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <h2 className="text-4xl text-black font-bold">
+              {isRevision ? "AI-Revised Resume" : "Resume Review"}
+            </h2>
+            {hasLoadedRecord && !recordMissing && (
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => handleDownload("pdf")}
+                  disabled={!resumePath || downloading !== null}
+                  className="primary-button w-fit text-sm disabled:opacity-50"
+                >
+                  {downloading === "pdf" ? "Downloading..." : "Download PDF"}
+                </button>
+                <button
+                  onClick={() => handleDownload("docx")}
+                  disabled={!docxPath || downloading !== null}
+                  title={docxPath ? "Download Word document" : "DOCX is available for newly generated AI resumes"}
+                  className="back-button w-fit text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {downloading === "docx" ? "Downloading..." : "Download DOCX"}
+                </button>
+              </div>
+            )}
+          </div>
+          {downloadError && (
+            <p className="text-sm text-red-600">{downloadError}</p>
+          )}
 
           {feedback ? (
             <div className="flex flex-col gap-6 animate-in fade-in duration-1000">

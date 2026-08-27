@@ -184,6 +184,11 @@ const CustomRevise = () => {
         if (!uploadedResume)
           throw new Error("Failed to upload revised resume.");
 
+        const docxFile = new File([docx], "custom-revised-resume.docx", {
+          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        });
+        const uploadedDocx = await fs.upload([docxFile]);
+
         let uploadedImagePath: string | null = null;
         if (imgResult.file) {
           const uploadedImage = await fs.upload([imgResult.file]);
@@ -198,6 +203,7 @@ const CustomRevise = () => {
           jobDescription: resumeData.jobDescription,
           imagePath: uploadedImagePath ?? resumeData.imagePath,
           resumePath: uploadedResume.path,
+          docxPath: uploadedDocx?.path,
           feedback: resumeData.feedback,
           isRevision: true,
           originalResumeId: id,

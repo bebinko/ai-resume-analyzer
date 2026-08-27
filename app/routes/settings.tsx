@@ -77,6 +77,13 @@ const Settings = () => {
         } catch {
           // same as above
         }
+        if (resume.docxPath) {
+          try {
+            await fs.delete(resume.docxPath);
+          } catch {
+            // optional Word export may already be gone
+          }
+        }
         await kv.delete(`resume:${resume.id}`);
       }
 
