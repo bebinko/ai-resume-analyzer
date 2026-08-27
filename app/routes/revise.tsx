@@ -492,9 +492,9 @@ const Revise = () => {
                 </div>
 
                 <div className="flex flex-col lg:flex-row gap-8 items-start w-full">
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex justify-center">
                     {previewUrl ? (
-                      <div className="gradient-border animate-in fade-in duration-1000">
+                      <div className="gradient-border animate-in fade-in duration-1000 w-full max-w-2xl">
                         <img
                           src={previewUrl}
                           alt="Revised resume preview"

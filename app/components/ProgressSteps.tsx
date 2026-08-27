@@ -12,7 +12,11 @@ const ProgressSteps = ({
 }) => {
   return (
     <div className="flex flex-col items-center gap-8 py-10">
-      <img src="/images/resume-scan.gif" className="w-[220px]" alt="scanning" />
+      <img
+        src="/images/resume-scan.gif"
+        className="w-36 sm:w-44 h-auto"
+        alt="Scanning resume"
+      />
       <div className="flex flex-col gap-3 w-full max-w-sm">
         {steps.map((step, i) => (
           <div key={step.id} className="flex items-center gap-3">

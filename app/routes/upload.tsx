@@ -197,7 +197,11 @@ const Upload = () => {
               <p className="text-xs text-gray-400 mt-1">
                 {Math.round(progress)}% • {elapsedSeconds}s elapsed
               </p>
-              <img src="/images/resume-scan.gif" className="w-full" />
+              <img
+                src="/images/resume-scan.gif"
+                alt="Scanning resume"
+                className="w-36 sm:w-44 h-auto mx-auto mt-4"
+              />
             </>
           ) : (
             <h2>Drop your resume for an ATS score and improvement tips</h2>

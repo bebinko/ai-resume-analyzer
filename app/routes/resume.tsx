@@ -393,16 +393,25 @@ const Resume = () => {
               </div>
             </div>
           ) : (
-            <img src="/images/resume-scan-2.gif" className="w-full" />
+            <img
+              src="/images/resume-scan-2.gif"
+              alt="Loading resume analysis"
+              className="w-36 sm:w-44 h-auto mx-auto"
+            />
           )}
         </section>
         <section className="feedback-section bg-[url('/images/bg-small.png')] bg-cover h-[100vh] sticky top-0 items-center justify-center">
           {imageUrl && resumeUrl && (
-            <div className="animate-in fade-in duration-1000 gradient-border max-sm:m-0 h-[90%] max-wxl:h-fit w-fit">
-              <a href={resumeUrl} target="_blank" rel="noopener noreferrer">
+            <div className="animate-in fade-in duration-1000 gradient-border max-sm:m-0 w-fit max-w-full">
+              <a
+                href={resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-fit max-w-full"
+              >
                 <img
                   src={imageUrl}
-                  className="w-full h-full object-contain rounded-2xl"
+                  className="block w-auto max-w-full max-h-[78vh] object-contain rounded-2xl"
                   title="resume"
                 />
               </a>
