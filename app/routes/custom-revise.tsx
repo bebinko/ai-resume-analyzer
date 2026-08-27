@@ -249,12 +249,14 @@ const CustomRevise = () => {
       <Navbar />
       <section className="main-section">
         <div className="page-heading py-10">
-          <Link to={`/resume/${id}`} className="back-button mb-4 inline-flex">
-            <img src="/icons/back.svg" alt="back" className="w-2.5 h-2.5" />
-            <span className="text-gray-800 text-sm font-semibold">
-              Back to Review
-            </span>
-          </Link>
+          {!isDone && (
+            <Link to={`/resume/${id}`} className="back-button mb-4 inline-flex">
+              <img src="/icons/back.svg" alt="back" className="w-2.5 h-2.5" />
+              <span className="text-gray-800 text-sm font-semibold">
+                Back to Review
+              </span>
+            </Link>
+          )}
           <h1>Suggest Your Own Revisions</h1>
           <h2>
             Tell Claude exactly what you want changed, and it'll apply it to
@@ -413,7 +415,7 @@ const CustomRevise = () => {
                 </button>
                 <button
                   onClick={handleDownloadDocx}
-                  className="back-button w-full flex items-center justify-center gap-2"
+                  className="back-button w-full flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
                 >
                   Download as Word (.docx)
                 </button>

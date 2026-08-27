@@ -443,12 +443,14 @@ const Revise = () => {
       <Navbar />
       <section className="main-section">
         <div className="page-heading py-10">
-          <Link to={`/resume/${id}`} className="back-button mb-4 inline-flex">
-            <img src="/icons/back.svg" alt="back" className="w-2.5 h-2.5" />
-            <span className="text-gray-800 text-sm font-semibold">
-              Back to Review
-            </span>
-          </Link>
+          {!isDone && (
+            <Link to={`/resume/${id}`} className="back-button mb-4 inline-flex">
+              <img src="/icons/back.svg" alt="back" className="w-2.5 h-2.5" />
+              <span className="text-gray-800 text-sm font-semibold">
+                Back to Review
+              </span>
+            </Link>
+          )}
           <h1>
             {coverLetterOnly ? "Cover Letter Generator" : "AI Resume Revision"}
           </h1>
@@ -547,7 +549,7 @@ const Revise = () => {
                     </button>
                     <button
                       onClick={handleDownloadResumeDocx}
-                      className="back-button w-fit flex items-center gap-2"
+                      className="back-button w-fit flex items-center gap-2 hover:bg-gray-100 transition-colors"
                     >
                       Download Revised DOCX
                     </button>
@@ -594,18 +596,6 @@ const Revise = () => {
                       </ul>
                     </div>
 
-                    <button
-                      onClick={handleDownload}
-                      className="primary-button w-full flex items-center justify-center gap-2"
-                    >
-                      Download Revised PDF
-                    </button>
-                    <button
-                      onClick={handleDownloadResumeDocx}
-                      className="back-button w-full flex items-center justify-center gap-2"
-                    >
-                      Download Revised DOCX
-                    </button>
                   </div>
                 </div>
               </>

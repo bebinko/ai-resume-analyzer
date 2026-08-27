@@ -212,7 +212,7 @@ const Resume = () => {
                   onClick={() => handleDownload("docx")}
                   disabled={!docxPath || downloading !== null}
                   title={docxPath ? "Download Word document" : "DOCX is available for newly generated AI resumes"}
-                  className="back-button w-fit text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="back-button w-fit text-sm cursor-pointer hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   {downloading === "docx" ? "Downloading..." : "Download DOCX"}
                 </button>
