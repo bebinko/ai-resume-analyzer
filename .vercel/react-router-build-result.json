@@ -1,0 +1,247 @@
+{
+  "buildManifest": {
+    "serverBundles": {
+      "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0": {
+        "id": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+        "file": "build/server/nodejs_eyJydW50aW1lIjoibm9kZWpzIn0/index.js",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    },
+    "routeIdToServerBundleId": {
+      "routes/home": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/auth": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/upload": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/resume": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/revise": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/custom-revise": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/settings": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/privacy": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0",
+      "routes/about": "nodejs_eyJydW50aW1lIjoibm9kZWpzIn0"
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "app/root.tsx",
+        "path": "",
+        "config": {}
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "app/routes/home.tsx",
+        "index": true,
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/auth": {
+        "id": "routes/auth",
+        "parentId": "root",
+        "file": "app/routes/auth.tsx",
+        "path": "/auth",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/upload": {
+        "id": "routes/upload",
+        "parentId": "root",
+        "file": "app/routes/upload.tsx",
+        "path": "/upload",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/resume": {
+        "id": "routes/resume",
+        "parentId": "root",
+        "file": "app/routes/resume.tsx",
+        "path": "/resume/:id",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/revise": {
+        "id": "routes/revise",
+        "parentId": "root",
+        "file": "app/routes/revise.tsx",
+        "path": "revise/:id",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/custom-revise": {
+        "id": "routes/custom-revise",
+        "parentId": "root",
+        "file": "app/routes/custom-revise.tsx",
+        "path": "custom-revise/:id",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/settings": {
+        "id": "routes/settings",
+        "parentId": "root",
+        "file": "app/routes/settings.tsx",
+        "path": "settings",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/privacy": {
+        "id": "routes/privacy",
+        "parentId": "root",
+        "file": "app/routes/privacy.tsx",
+        "path": "privacy",
+        "config": {
+          "runtime": "nodejs"
+        }
+      },
+      "routes/about": {
+        "id": "routes/about",
+        "parentId": "root",
+        "file": "app/routes/about.tsx",
+        "path": "about",
+        "config": {
+          "runtime": "nodejs"
+        }
+      }
+    }
+  },
+  "reactRouterConfig": {
+    "appDirectory": "C:/Users/Brady/Desktop/Code/React Projects/JavaScript Mastery/AI Resume Analyzer/app",
+    "basename": "/",
+    "buildDirectory": "C:/Users/Brady/Desktop/Code/React Projects/JavaScript Mastery/AI Resume Analyzer/build",
+    "future": {
+      "unstable_optimizeDeps": false,
+      "v8_passThroughRequests": true,
+      "v8_trailingSlashAwareDataRequests": true,
+      "unstable_previewServerPrerendering": false,
+      "v8_middleware": true,
+      "v8_splitRouteModules": true,
+      "v8_viteEnvironmentApi": true
+    },
+    "routes": {
+      "root": {
+        "id": "root",
+        "file": "root.tsx",
+        "path": ""
+      },
+      "routes/home": {
+        "id": "routes/home",
+        "parentId": "root",
+        "file": "routes/home.tsx",
+        "index": true
+      },
+      "routes/auth": {
+        "id": "routes/auth",
+        "parentId": "root",
+        "file": "routes/auth.tsx",
+        "path": "/auth"
+      },
+      "routes/upload": {
+        "id": "routes/upload",
+        "parentId": "root",
+        "file": "routes/upload.tsx",
+        "path": "/upload"
+      },
+      "routes/resume": {
+        "id": "routes/resume",
+        "parentId": "root",
+        "file": "routes/resume.tsx",
+        "path": "/resume/:id"
+      },
+      "routes/revise": {
+        "id": "routes/revise",
+        "parentId": "root",
+        "file": "routes/revise.tsx",
+        "path": "revise/:id"
+      },
+      "routes/custom-revise": {
+        "id": "routes/custom-revise",
+        "parentId": "root",
+        "file": "routes/custom-revise.tsx",
+        "path": "custom-revise/:id"
+      },
+      "routes/settings": {
+        "id": "routes/settings",
+        "parentId": "root",
+        "file": "routes/settings.tsx",
+        "path": "settings"
+      },
+      "routes/privacy": {
+        "id": "routes/privacy",
+        "parentId": "root",
+        "file": "routes/privacy.tsx",
+        "path": "privacy"
+      },
+      "routes/about": {
+        "id": "routes/about",
+        "parentId": "root",
+        "file": "routes/about.tsx",
+        "path": "about"
+      }
+    },
+    "routeDiscovery": {
+      "mode": "lazy",
+      "manifestPath": "/__manifest"
+    },
+    "serverBuildFile": "index.js",
+    "serverModuleFormat": "esm",
+    "ssr": true,
+    "subResourceIntegrity": false,
+    "allowedActionOrigins": false,
+    "unstable_routeConfig": [
+      {
+        "id": "root",
+        "path": "",
+        "file": "root.tsx",
+        "children": [
+          {
+            "file": "routes/home.tsx",
+            "index": true
+          },
+          {
+            "file": "routes/auth.tsx",
+            "path": "/auth"
+          },
+          {
+            "file": "routes/upload.tsx",
+            "path": "/upload"
+          },
+          {
+            "file": "routes/resume.tsx",
+            "path": "/resume/:id"
+          },
+          {
+            "file": "routes/revise.tsx",
+            "path": "revise/:id"
+          },
+          {
+            "file": "routes/custom-revise.tsx",
+            "path": "custom-revise/:id"
+          },
+          {
+            "file": "routes/settings.tsx",
+            "path": "settings"
+          },
+          {
+            "file": "routes/privacy.tsx",
+            "path": "privacy"
+          },
+          {
+            "file": "routes/about.tsx",
+            "path": "about"
+          }
+        ]
+      }
+    ]
+  },
+  "viteConfig": {
+    "build": {
+      "assetsDir": "assets"
+    }
+  }
+}
