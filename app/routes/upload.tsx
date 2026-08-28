@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import FileUploader from "~/components/FileUploader";
 import Navbar from "~/components/Navbar";
+import DisclosureNotice from "~/components/DisclosureNotice";
 import { convertPdfToImage } from "~/lib/pdf2img";
 import { usePuterStore } from "~/lib/puter";
 import { generateUUID } from "~/lib/utils";
@@ -267,6 +268,7 @@ const Upload = () => {
                 <label htmlFor="uploader">Upload Resume</label>
                 <FileUploader onFileSelect={handleFileSelect} />
               </div>
+              <DisclosureNotice context="upload" />
               <button className="primary-button" type="submit">
                 Analyze Resume
               </button>

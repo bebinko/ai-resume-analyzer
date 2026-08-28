@@ -42,6 +42,12 @@ const Navbar = () => {
       </Link>
 
       <div className="flex items-center gap-3">
+        <Link
+          to="/privacy"
+          className="hidden sm:block text-sm font-semibold text-gray-600 hover:text-indigo-700 transition-colors"
+        >
+          Privacy & AI
+        </Link>
         <Link to="/upload" className="primary-button w-fit">
           Upload Resume
         </Link>

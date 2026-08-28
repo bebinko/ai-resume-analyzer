@@ -8,4 +8,5 @@ export default [
   route("revise/:id", "routes/revise.tsx"),
   route("custom-revise/:id", "routes/custom-revise.tsx"),
   route("settings", "routes/settings.tsx"),
+  route("privacy", "routes/privacy.tsx"),
 ] satisfies RouteConfig;

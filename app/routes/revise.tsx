@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import Navbar from "~/components/Navbar";
 import ProgressSteps from "~/components/ProgressSteps";
 import CoverLetterCard from "~/components/CoverLetterCard";
+import DisclosureNotice from "~/components/DisclosureNotice";
 import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
 import { generateUUID } from "~/lib/utils";
@@ -459,6 +460,7 @@ const Revise = () => {
               ? "Claude will write a tailored cover letter based on your resume and the job description."
               : "Claude will rewrite your resume based on the feedback it provided."}
           </h2>
+          <DisclosureNotice context="ai" />
         </div>
 
         {error && (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import Navbar from "~/components/Navbar";
 import ProgressSteps from "~/components/ProgressSteps";
+import DisclosureNotice from "~/components/DisclosureNotice";
 import { usePuterStore } from "~/lib/puter";
 import { convertPdfToImage } from "~/lib/pdf2img";
 import { generateUUID } from "~/lib/utils";
@@ -262,6 +263,7 @@ const CustomRevise = () => {
             Tell Claude exactly what you want changed, and it'll apply it to
             your resume.
           </h2>
+          <DisclosureNotice context="ai" />
         </div>
 
         {loadingResume && (

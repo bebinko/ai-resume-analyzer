@@ -8,6 +8,7 @@ import JobPostings from "~/components/JobPostings";
 import TabBar from "~/components/TabBar";
 import { usePuterStore } from "~/lib/puter";
 import JobLegitimacyCheck from "~/components/JobLegitimacyCheck";
+import DisclosureNotice from "~/components/DisclosureNotice";
 import { prepareInstructions } from "../../constants";
 
 export const meta = () => [
@@ -222,7 +223,6 @@ const Resume = () => {
           {downloadError && (
             <p className="text-sm text-red-600">{downloadError}</p>
           )}
-
           {feedback ? (
             <div className="flex flex-col gap-6 animate-in fade-in duration-1000">
               <TabBar
@@ -452,6 +452,7 @@ const Resume = () => {
               className="w-36 sm:w-44 h-auto mx-auto"
             />
           )}
+          {feedback && <DisclosureNotice context="ai" />}
         </section>
         <section className="feedback-section bg-[url('/images/bg-small.png')] bg-cover h-[100vh] sticky top-0 items-center justify-center">
           {imageUrl && resumeUrl && (
