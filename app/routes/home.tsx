@@ -133,6 +133,19 @@ export default function Home() {
               </p>
             </div>
           )}
+
+        <footer className="w-full border-t border-indigo-100/70 mt-12 py-8 text-center">
+          <p className="text-sm text-gray-500">
+            Curious about the person behind Breezume?{" "}
+            <Link
+              to="/about"
+              className="font-semibold text-indigo-700 underline underline-offset-4 [text-decoration-skip-ink:none] hover:text-indigo-900 transition-colors"
+            >
+              Meet the developer
+            </Link>
+            .
+          </p>
+        </footer>
       </section>
     </main>
   );
