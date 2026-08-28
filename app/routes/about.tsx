@@ -58,9 +58,9 @@ const About = () => (
             message through any of the links below.
           </p>
           <div className="flex flex-wrap gap-3">
-            <a href="#" className="primary-button w-fit">
+            {/* <a href="#" className="primary-button w-fit">
               View My Portfolio
-            </a>
+            </a> */}
             <a
               href="https://github.com/bebinko"
               className="back-button w-fit cursor-pointer hover:bg-gray-50 transition-colors"
