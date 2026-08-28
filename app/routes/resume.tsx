@@ -7,7 +7,7 @@ import JobTitleSuggestions from "~/components/JobTitleSuggestions";
 import JobPostings from "~/components/JobPostings";
 import TabBar from "~/components/TabBar";
 import { usePuterStore } from "~/lib/puter";
-import JobLegitimacyCheck from "~/components/JobLegitimacyCheck";
+import JobLegitimacyCheck from "~/components/JobLegitimacycheck";
 import DisclosureNotice from "~/components/DisclosureNotice";
 import { prepareInstructions } from "../../constants";
 
@@ -212,7 +212,11 @@ const Resume = () => {
                 <button
                   onClick={() => handleDownload("docx")}
                   disabled={!docxPath || downloading !== null}
-                  title={docxPath ? "Download Word document" : "DOCX is available for newly generated AI resumes"}
+                  title={
+                    docxPath
+                      ? "Download Word document"
+                      : "DOCX is available for newly generated AI resumes"
+                  }
                   className="back-button w-fit text-sm cursor-pointer hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   {downloading === "docx" ? "Downloading..." : "Download DOCX"}
